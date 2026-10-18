@@ -7,3 +7,102 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# AGENTS.md
+
+Canonical instruction file for this repository, shared by all coding agents
+(Claude Code, Codex, Cursor, and others). Claude Code reaches it through the
+`@AGENTS.md` import in `CLAUDE.md`, which holds no guidance of its own.
+
+## Source of truth
+
+[`docs/brief.md`](docs/brief.md) defines what the site does and why. Read it
+before any product or UX decision, and treat its non-goals and anti-goals as
+hard limits: no customer accounts, no cart, no online payment, no order
+database (the WhatsApp chat is the record). Ideas outside v1 go to the brief's
+backlog, not into code.
+
+## Commands
+
+Node 24+ and pnpm 11 (`packageManager` pins the version).
+
+- Dev server: `pnpm dev` (runs with Cloudflare bindings)
+- Lint / typecheck / test: `pnpm lint`, `pnpm typecheck`, `pnpm test`
+- Single test file: `pnpm test <path>`; by name: `pnpm test -t "<name>"`
+- Worker build, as CI runs it: `pnpm exec opennextjs-cloudflare build`
+- Run the Worker locally in workerd: `pnpm preview` (http://localhost:8787)
+- After editing `wrangler.jsonc`: `pnpm cf-typegen` to regenerate
+  `cloudflare-env.d.ts`
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, test and the Worker
+build on PRs into `main` and `develop`, and never deploys. The pre-commit hook
+runs `eslint --fix` on staged files.
+
+## Environments
+
+Cloudflare Workers Builds deploys from Git. No GitHub workflow deploys.
+
+| Environment | Worker | Wrangler env | Deploys from | Branch previews |
+|---|---|---|---|---|
+| Production | `9k-store` | top level | `main` | off |
+| Staging | `9k-store-staging` | `staging` | `develop` | every other branch |
+| Local | — | — | `pnpm dev` / `pnpm preview` | — |
+
+- `pnpm deploy` and `pnpm upload` target the top-level Worker, which is
+  production. Don't run them unless asked; merging is how code ships.
+- **Bindings are not inherited.** Each new binding (D1, R2, Images) goes in
+  three places in `wrangler.jsonc`: top level, `env.staging`, and
+  `env.staging.previews`. Then run `pnpm cf-typegen`.
+- Previews run under the staging Worker and leave out
+  `WORKER_SELF_REFERENCE`, because a preview's service binding resolves to the
+  deployed staging Worker rather than to the preview itself.
+- Local Worker variables live in `.dev.vars` (git-ignored); copy
+  `.dev.vars.example`.
+
+## Testing
+
+Write focused unit tests for meaningful logic only, such as building the order
+message, availability rules and locale handling. No snapshot tests, and no
+tests for presentational components. Tests run in Vitest (jsdom) and sit next
+to the code as `*.test.ts(x)`.
+
+## Architecture
+
+The app is a scaffold so far: Next.js 16 App Router under `src/app`, deployed
+to Cloudflare Workers through OpenNext (`@opennextjs/cloudflare`). Import from
+`src` with the `@/` alias.
+
+The brief's suggested target, which the config is set up for:
+
+- **Data is read at request time, not built in.** The owner's admin edits must
+  reach the live site within a minute without a deploy, so product data comes
+  from D1 and photos from R2, not from static generation or files in the repo.
+- **Routes are language-prefixed:** `/ar/...` and `/en/...`, product pages at
+  `/<lang>/p/<slug>`, with `?color=` pre-selecting a color. Arabic is the
+  default for the bare domain. The URL language wins over a remembered
+  choice.
+- **Admin** lives at a hidden path behind a single owner login, built for a
+  laptop.
+
+## Things agents get wrong
+
+- **Don't enable `cacheComponents`** (or `partialPrefetching`) in
+  `next.config.ts`: with `@opennextjs/cloudflare` 1.20 the Worker hangs on
+  every request in workerd. `pnpm dev` won't show the problem; check the
+  Worker with `pnpm preview`.
+- **`LayoutProps` / `PageProps` are generated globals** from `next typegen`,
+  which is why `pnpm typecheck` runs it before `tsc`.
+- **`noUncheckedIndexedAccess` is on,** so indexed reads are `T | undefined`.
+- **The order message must match the page.** The price in the WhatsApp message
+  must equal the price shown. Stock is checked again when the order button is
+  tapped, and a sold-out size never opens WhatsApp. The button must work in
+  Instagram's in-app browser.
+- **Arabic is first-class, not mirrored English.** Use RTL layout, keep prices,
+  sizes and codes readable inside RTL text, use Western digits (0–9) in both
+  languages, and give every customer-facing string an Arabic version.
+- **Sold-out products stay visible,** marked "Sold out", and a hidden
+  product's link shows a "no longer available" page, not a 404, so old story
+  links keep working.
+- **Mobile weight matters.** Most visitors arrive in Instagram's in-app browser
+  on 4G, and the catalog should be usable in about 2 seconds. Serve images in
+  modern formats at screen-fitting sizes.
