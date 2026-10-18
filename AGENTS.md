@@ -22,6 +22,11 @@ hard limits: no customer accounts, no cart, no online payment, no order
 database (the WhatsApp chat is the record). Ideas outside v1 go to the brief's
 backlog, not into code.
 
+[`docs/brand/guidelines.md`](docs/brand/guidelines.md) defines how the site
+looks: the three colors and where green goes, the font, the hanging-rail
+motif, how product photos are shot, and the shadcn/ui theme tokens. Read it
+before any visual work.
+
 ## Commands
 
 Node 24+ and pnpm 11 (`packageManager` pins the version).
