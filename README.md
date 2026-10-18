@@ -29,10 +29,21 @@ Requires Node 24+ and pnpm 11.
 Local Worker variables live in `.dev.vars` (git-ignored); copy
 `.dev.vars.example` to create it.
 
+## Checks
+
+`pnpm install` sets up a Husky pre-commit hook that runs lint-staged, which
+runs `eslint --fix` on the staged files.
+
+Every pull request into `main` or `develop` runs
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint, typecheck, test
+and build as separate jobs. The build job runs `opennextjs-cloudflare build`,
+so it also checks the Worker bundle. The workflow only runs checks and never
+deploys.
+
 ## Deploys
 
-Cloudflare Workers Builds deploys from Git; there is no deploy workflow in this
-repo.
+Cloudflare Workers Builds deploys from Git; no GitHub workflow in this repo
+deploys.
 
 | Worker | Wrangler env | Deploys from | Previews |
 |---|---|---|---|
