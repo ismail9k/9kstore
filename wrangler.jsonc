@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "9kstore",
+  "name": "9k-store",
   "compatibility_date": "2026-10-12",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
@@ -13,9 +13,28 @@
       // Self-reference service binding, the service name must match the worker name
       // see https://opennext.js.org/cloudflare/caching
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "9kstore",
+      "service": "9k-store",
     },
   ],
   // D1 (product data), R2 (photos, incremental cache) and the Images binding
   // are added together with the features that need them.
+  "env": {
+    // Deployed from `develop` by Workers Builds. Bindings are not inherited,
+    // so every binding added above needs a staging copy here.
+    "staging": {
+      "name": "9k-store-staging",
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "9k-store-staging",
+        },
+      ],
+      // Branch Previews (`wrangler preview --env staging`) run under the
+      // staging Worker. Bindings are not inherited here either; preview
+      // bindings go in this block. WORKER_SELF_REFERENCE is left out because
+      // a Preview's service binding resolves to the deployed staging Worker,
+      // not to the Preview itself.
+      "previews": {},
+    },
+  },
 }

@@ -28,3 +28,16 @@ Requires Node 24+ and pnpm 11.
 
 Local Worker variables live in `.dev.vars` (git-ignored); copy
 `.dev.vars.example` to create it.
+
+## Deploys
+
+Cloudflare Workers Builds deploys from Git; there is no deploy workflow in this
+repo.
+
+| Worker | Wrangler env | Deploys from | Previews |
+|---|---|---|---|
+| `9k-store` | top level | `main` | off |
+| `9k-store-staging` | `staging` | `develop` | every other branch |
+
+Bindings are not inherited by `env.staging` or its `previews` block, so add
+each new binding to all three in `wrangler.jsonc`.
