@@ -1,0 +1,280 @@
+import { describe, expect, test } from "vitest";
+
+import type { Color, Product } from "@/lib/catalog/schema";
+
+import { assignColorKeys, type Draft, draftFromProduct, emptyDraft, NEW_KEY_PREFIX, reduce } from "./form-state";
+
+function color(key: string, nameEn = key, photos: Color["photos"] = []): Color {
+  return { key, nameAr: nameEn, nameEn, swatch: "#123456", photos };
+}
+
+function draft(overrides: Partial<Draft> = {}): Draft {
+  return {
+    ...emptyDraft(),
+    slug: "tee",
+    nameEn: "Tee",
+    nameAr: "تيشيرت",
+    slugEdited: true,
+    sizes: ["S", "M", "L"],
+    colors: [color("black"), color("white")],
+    soldOut: [],
+    ...overrides,
+  };
+}
+
+const product: Product = {
+  id: "p1",
+  slug: "tee",
+  nameAr: "تيشيرت",
+  nameEn: "Tee",
+  descriptionAr: "",
+  descriptionEn: "",
+  priceEgp: 450,
+  code: "T-1",
+  sizes: ["S", "M"],
+  colors: [color("black")],
+  soldOut: [{ color: "black", size: "S" }],
+  sizeChart: { key: "chart.jpg" },
+  published: true,
+  sortOrder: -1,
+  createdAt: "2026-10-01T00:00:00.000Z",
+  updatedAt: "2026-10-02T00:00:00.000Z",
+};
+
+describe("emptyDraft", () => {
+  test("is hidden, sizeless, with one empty near-black color and an auto slug", () => {
+    const d = emptyDraft();
+    expect(d.published).toBe(false);
+    expect(d.sizes).toEqual([]);
+    expect(d.slugEdited).toBe(false);
+    expect(d.code).toBeNull();
+    expect(d.sizeChart).toBeNull();
+    expect(d.colors).toHaveLength(1);
+    expect(d.colors[0]).toMatchObject({ nameAr: "", nameEn: "", swatch: "#0a0a0a", photos: [] });
+    expect(d.colors[0]?.key.startsWith(NEW_KEY_PREFIX)).toBe(true);
+  });
+});
+
+describe("draftFromProduct", () => {
+  test("keeps the product's input fields and marks the slug as edited", () => {
+    const d = draftFromProduct(product);
+    expect(d.slugEdited).toBe(true);
+    expect(d).not.toHaveProperty("id");
+    expect(d).not.toHaveProperty("sortOrder");
+    expect(d).not.toHaveProperty("createdAt");
+    expect(d).not.toHaveProperty("updatedAt");
+    expect(d.slug).toBe("tee");
+    expect(d.soldOut).toEqual([{ color: "black", size: "S" }]);
+    expect(d.sizeChart).toEqual({ key: "chart.jpg" });
+  });
+});
+
+describe("names and slug", () => {
+  test("nameEn updates the slug while it has not been edited", () => {
+    const d = reduce(emptyDraft(), { type: "nameEn", value: "Oversized Tee" });
+    expect(d.nameEn).toBe("Oversized Tee");
+    expect(d.slug).toBe("oversized-tee");
+  });
+
+  test("nameEn leaves an edited slug alone", () => {
+    const d = reduce(draft({ slug: "my-link", slugEdited: true }), { type: "nameEn", value: "Oversized Tee" });
+    expect(d.nameEn).toBe("Oversized Tee");
+    expect(d.slug).toBe("my-link");
+  });
+
+  test("slug action marks slugEdited", () => {
+    const d = reduce(emptyDraft(), { type: "slug", value: "custom" });
+    expect(d.slug).toBe("custom");
+    expect(d.slugEdited).toBe(true);
+    expect(reduce(d, { type: "nameEn", value: "Other" }).slug).toBe("custom");
+  });
+
+  test("field sets a plain field", () => {
+    expect(reduce(draft(), { type: "field", name: "priceEgp", value: 300 }).priceEgp).toBe(300);
+    expect(reduce(draft(), { type: "field", name: "published", value: true }).published).toBe(true);
+    expect(reduce(draft(), { type: "field", name: "nameAr", value: "قميص" }).nameAr).toBe("قميص");
+  });
+});
+
+describe("sizes", () => {
+  test("addSize trims and ignores empty or duplicate sizes", () => {
+    let d = draft({ sizes: [] });
+    d = reduce(d, { type: "addSize", size: " M " });
+    d = reduce(d, { type: "addSize", size: "   " });
+    d = reduce(d, { type: "addSize", size: "M" });
+    d = reduce(d, { type: "addSize", size: "m" });
+    expect(d.sizes).toEqual(["M", "m"]);
+  });
+
+  test("addSize leaves the new size in stock for every color", () => {
+    const d = reduce(draft({ soldOut: [{ color: "black", size: "S" }] }), { type: "addSize", size: "XL" });
+    expect(d.soldOut).toEqual([{ color: "black", size: "S" }]);
+  });
+
+  test("removeSize drops its sold-out pairs", () => {
+    const d = reduce(
+      draft({
+        soldOut: [
+          { color: "black", size: "S" },
+          { color: "white", size: "S" },
+          { color: "black", size: "M" },
+        ],
+      }),
+      { type: "removeSize", size: "S" },
+    );
+    expect(d.sizes).toEqual(["M", "L"]);
+    expect(d.soldOut).toEqual([{ color: "black", size: "M" }]);
+  });
+});
+
+describe("colors", () => {
+  test("removeColor drops its sold-out pairs", () => {
+    const d = reduce(
+      draft({
+        soldOut: [
+          { color: "black", size: "S" },
+          { color: "white", size: "M" },
+        ],
+      }),
+      { type: "removeColor", key: "black" },
+    );
+    expect(d.colors.map((c) => c.key)).toEqual(["white"]);
+    expect(d.soldOut).toEqual([{ color: "white", size: "M" }]);
+  });
+
+  test("addColor appends a color with a temporary unique key and black swatch", () => {
+    let d = draft();
+    d = reduce(d, { type: "addColor" });
+    d = reduce(d, { type: "addColor" });
+    expect(d.colors.map((c) => c.key)).toEqual(["black", "white", "new-1", "new-2"]);
+    expect(d.colors[3]).toEqual({ key: "new-2", nameAr: "", nameEn: "", swatch: "#0a0a0a", photos: [] });
+  });
+
+  test("addColor never reuses a temporary key after a removal", () => {
+    let d = draft();
+    d = reduce(d, { type: "addColor" });
+    d = reduce(d, { type: "addColor" });
+    d = reduce(d, { type: "removeColor", key: "new-1" });
+    d = reduce(d, { type: "addColor" });
+    const keys = d.colors.map((c) => c.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  test("colorField nameEn never changes the key", () => {
+    let d = reduce(draft(), { type: "colorField", key: "black", name: "nameEn", value: "Jet Black" });
+    d = reduce(d, { type: "addColor" });
+    d = reduce(d, { type: "colorField", key: "new-1", name: "nameEn", value: "Navy" });
+    expect(d.colors.map((c) => [c.key, c.nameEn])).toEqual([
+      ["black", "Jet Black"],
+      ["white", "white"],
+      ["new-1", "Navy"],
+    ]);
+  });
+
+  test("colorField sets the Arabic name and the swatch", () => {
+    let d = reduce(draft(), { type: "colorField", key: "white", name: "nameAr", value: "أبيض" });
+    d = reduce(d, { type: "colorField", key: "white", name: "swatch", value: "#ffffff" });
+    expect(d.colors[1]).toMatchObject({ key: "white", nameAr: "أبيض", swatch: "#ffffff" });
+  });
+
+  test("moveSize and moveColor reorder", () => {
+    let d = reduce(draft(), { type: "moveSize", from: 0, to: 2 });
+    expect(d.sizes).toEqual(["M", "L", "S"]);
+    d = reduce(d, { type: "moveColor", from: 1, to: 0 });
+    expect(d.colors.map((c) => c.key)).toEqual(["white", "black"]);
+  });
+
+  test("moves out of range change nothing", () => {
+    const d = draft();
+    expect(reduce(d, { type: "moveSize", from: 5, to: 0 }).sizes).toEqual(["S", "M", "L"]);
+    expect(reduce(d, { type: "moveColor", from: 0, to: -1 }).colors.map((c) => c.key)).toEqual(["black", "white"]);
+  });
+});
+
+describe("photos and size chart", () => {
+  const withPhotos = () =>
+    draft({ colors: [color("black", "Black", [{ key: "a" }, { key: "b" }, { key: "c" }]), color("white")] });
+
+  test("removePhoto removes one photo from its color", () => {
+    const d = reduce(withPhotos(), { type: "removePhoto", key: "black", photoKey: "b" });
+    expect(d.colors[0]?.photos).toEqual([{ key: "a" }, { key: "c" }]);
+  });
+
+  test("movePhoto reorders a color's photos", () => {
+    const d = reduce(withPhotos(), { type: "movePhoto", key: "black", from: 2, to: 0 });
+    expect(d.colors[0]?.photos.map((p) => p.key)).toEqual(["c", "a", "b"]);
+  });
+
+  test("removeSizeChart clears it", () => {
+    expect(reduce(draft({ sizeChart: { key: "chart" } }), { type: "removeSizeChart" }).sizeChart).toBeNull();
+  });
+});
+
+describe("stock", () => {
+  test("setStock true removes the pair, false adds it once", () => {
+    let d = reduce(draft(), { type: "setStock", color: "black", size: "S", inStock: false });
+    d = reduce(d, { type: "setStock", color: "black", size: "S", inStock: false });
+    expect(d.soldOut).toEqual([{ color: "black", size: "S" }]);
+    d = reduce(d, { type: "setStock", color: "black", size: "S", inStock: true });
+    expect(d.soldOut).toEqual([]);
+  });
+
+  test("setColorStock marks every size of the color", () => {
+    let d = draft({ soldOut: [{ color: "black", size: "M" }, { color: "white", size: "S" }] });
+    d = reduce(d, { type: "setColorStock", color: "black", inStock: false });
+    expect(d.soldOut).toHaveLength(4);
+    expect(d.soldOut).toEqual(
+      expect.arrayContaining([
+        { color: "black", size: "S" },
+        { color: "black", size: "M" },
+        { color: "black", size: "L" },
+        { color: "white", size: "S" },
+      ]),
+    );
+    d = reduce(d, { type: "setColorStock", color: "black", inStock: true });
+    expect(d.soldOut).toEqual([{ color: "white", size: "S" }]);
+  });
+
+  test("setSizeStock marks every color for the size", () => {
+    let d = draft({ soldOut: [{ color: "white", size: "M" }, { color: "black", size: "S" }] });
+    d = reduce(d, { type: "setSizeStock", size: "M", inStock: false });
+    expect(d.soldOut).toHaveLength(3);
+    expect(d.soldOut).toEqual(
+      expect.arrayContaining([
+        { color: "black", size: "M" },
+        { color: "white", size: "M" },
+        { color: "black", size: "S" },
+      ]),
+    );
+    d = reduce(d, { type: "setSizeStock", size: "M", inStock: true });
+    expect(d.soldOut).toEqual([{ color: "black", size: "S" }]);
+  });
+});
+
+describe("assignColorKeys", () => {
+  test("assignColorKeys keys new colors from their English name and rewrites sold-out pairs", () => {
+    const d = assignColorKeys(
+      draft({
+        colors: [color("black", "Black"), color("new-1", "Black"), color("new-2", "أسود")],
+        soldOut: [{ color: "new-1", size: "S" }],
+      }),
+    );
+    expect(d.colors.map((c) => c.key)).toEqual(["black", "black-2", "color"]);
+    expect(d.soldOut).toEqual([{ color: "black-2", size: "S" }]);
+  });
+
+  test("assignColorKeys leaves saved keys alone", () => {
+    const before = draft({
+      colors: [color("black", "Jet Black"), color("white", "Black")],
+      soldOut: [{ color: "white", size: "M" }],
+    });
+    const d = assignColorKeys(before);
+    expect(d.colors.map((c) => c.key)).toEqual(["black", "white"]);
+    expect(d.soldOut).toEqual([{ color: "white", size: "M" }]);
+  });
+
+  test("a new color never takes a key a later saved color already has", () => {
+    const d = assignColorKeys(draft({ colors: [color("new-1", "Navy"), color("navy", "Navy blue")] }));
+    expect(d.colors.map((c) => c.key)).toEqual(["navy-2", "navy"]);
+  });
+});
