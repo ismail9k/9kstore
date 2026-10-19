@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { productToRow, rowToProduct, rowToSettings, settingsToRow, type ProductRow, type SettingsRow } from "./rows";
+import { parseProductRows, productToRow, rowToProduct, rowToSettings, settingsToRow, type ProductRow, type SettingsRow } from "./rows";
 import type { Product, Settings } from "./schema";
 
 function fullProduct(): Product {
@@ -114,5 +114,25 @@ describe("settings rows", () => {
       updated_at: "2026-10-19T09:00:00.000Z",
     };
     expect(rowToSettings(row)).toMatchObject({ whatsappNumber: "", instagramUrl: "", logo: null });
+  });
+});
+
+describe("parseProductRows", () => {
+  test("returns every good row with nothing rejected", () => {
+    const row = productToRow(fullProduct());
+    expect(parseProductRows([row])).toEqual({ products: [fullProduct()], rejected: [] });
+  });
+  test("skips a row with invalid JSON and names it", () => {
+    const good = productToRow(fullProduct());
+    const bad = { ...productToRow(fullProduct()), id: "bad-json", colors: "{not json" };
+    const result = parseProductRows([bad, good]);
+    expect(result.products.map((p) => p.id)).toEqual([good.id]);
+    expect(result.rejected).toEqual([{ id: "bad-json", reason: expect.stringContaining("colors") }]);
+  });
+  test("skips a row that fails the schema", () => {
+    const bad = { ...productToRow(fullProduct()), id: "bad-price", price_egp: -1 };
+    const result = parseProductRows([bad]);
+    expect(result.products).toEqual([]);
+    expect(result.rejected[0]?.id).toBe("bad-price");
   });
 });
