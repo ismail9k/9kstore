@@ -154,6 +154,10 @@ describe("railItems", () => {
     const colors = ["a", "b", "c", "d", "e"].map((k) => color(k, [{ key: k }]));
     expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d"]);
   });
+  test("caps after skipping photoless colors", () => {
+    const colors = [color("bare"), ...["a", "b", "c", "d"].map((k) => color(k, [{ key: k }]))];
+    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d"]);
+  });
 });
 
 describe("featuredProduct", () => {

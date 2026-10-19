@@ -45,7 +45,10 @@ export function ProductCard({
         )}
       </div>
       <p className="mt-2 line-clamp-2 text-sm font-bold">{name}</p>
-      <Price value={product.priceEgp} locale={locale} className="mt-0.5 block text-sm font-semibold text-primary" />
+      {/* The page-direction <p> is the block; the LTR <bdi> inside stays inline, so the price lines up with the name in Arabic. */}
+      <p className="mt-0.5 text-sm font-semibold text-primary">
+        <Price value={product.priceEgp} locale={locale} />
+      </p>
     </Link>
   );
 }

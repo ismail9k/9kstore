@@ -342,9 +342,10 @@ the DevTools throttling check above.
    canvas work on the customer page (JavaScript the page otherwise does not
    ship) or an upload-time scan stored on the photo. The cutouts are shot
    at the same scale with the hook at the top center, so the error is a few
-   pixels at phone size. Cost if the owner notices: an upload-time
-   `hookOffset` in #3's pipeline and a `--hook` translate per tee — half a
-   day, no page JavaScript.
+   pixels at phone size. Cost: the measured gap with the seed cutouts was
+   ~15-25px, so the rail pulls the tees up by a fixed amount; a per-photo
+   upload-time `hookOffset` in #3's pipeline and a `--hook` translate per
+   tee remains the precise fix — half a day, no page JavaScript.
 6. **Rail photos are `priority`; grid photos are lazy.** The hero fills a
    phone's first screen, so the grid is below the fold; marking cards
    `priority` would compete with the tees for bandwidth. Cost: none

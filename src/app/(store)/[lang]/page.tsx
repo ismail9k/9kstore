@@ -26,19 +26,22 @@ export default async function Home() {
   const featured = featuredProduct(products);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pb-16">
-      {featured && <Hero product={featured} locale={locale} t={t} />}
-      {products.length === 0 ? (
-        <p className="py-16 text-center text-muted-foreground">{t.home.empty}</p>
-      ) : (
-        <ul className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((product) => (
-            <li key={product.id}>
-              <ProductCard product={product} locale={locale} soldOutLabel={t.product.soldOut} />
-            </li>
-          ))}
-        </ul>
-      )}
+    // Full width and clipped: the rail's 100vw counts a classic scrollbar and would otherwise scroll sideways.
+    <main className="w-full flex-1 overflow-x-clip">
+      <div className="mx-auto flex w-full max-w-5xl flex-col px-4 pb-16">
+        {featured && <Hero product={featured} locale={locale} t={t} />}
+        {products.length === 0 ? (
+          <p className="py-16 text-center text-muted-foreground">{t.home.empty}</p>
+        ) : (
+          <ul className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+            {products.map((product) => (
+              <li key={product.id}>
+                <ProductCard product={product} locale={locale} soldOutLabel={t.product.soldOut} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </main>
   );
 }
