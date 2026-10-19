@@ -72,6 +72,7 @@ D1. Do these steps in order:
    ```sh
    pnpm db:migrate:local
    pnpm db:seed:local   # optional: one sample product
+   pnpm photos:seed:local   # optional: its photos
    pnpm dev
    ```
    and open http://localhost:3000/admin.
