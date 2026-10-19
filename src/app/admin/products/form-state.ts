@@ -4,9 +4,10 @@
  * the pure catalog helpers (never the server-only `@/lib/catalog` index).
  *
  * Color keys are stable (spec Call 5): a color added in the form gets a
- * temporary `new-<n>` key, renaming never rekeys, and only `assignColorKeys`,
- * run by the save action before validation, turns `new-*` keys into permanent
- * ones. `soldOut` is kept deduplicated, and removing a size or a color drops
+ * temporary `new:<n>` key, renaming never rekeys, and only `assignColorKeys`,
+ * run by the save action before validation, turns `new:*` keys into permanent
+ * ones. `slugify` never emits ":", so a saved key such as `new-navy` (from
+ * "New Navy") is never mistaken for a temporary one. `soldOut` is kept deduplicated, and removing a size or a color drops
  * its sold-out marks.
  */
 import { colorKey, slugify } from "@/lib/catalog/helpers";
@@ -16,7 +17,7 @@ export type Draft = ProductInput & { slugEdited: boolean };
 
 type SoldOut = ProductInput["soldOut"];
 
-export const NEW_KEY_PREFIX = "new-";
+export const NEW_KEY_PREFIX = "new:";
 
 const NEW_COLOR_SWATCH = "#0a0a0a";
 
@@ -42,7 +43,7 @@ function isNewKey(key: string): boolean {
   return key.startsWith(NEW_KEY_PREFIX);
 }
 
-/** `new-<n>`, n = 1 + the number of `new-*` keys, bumped past any key still taken (after a removal). */
+/** `new:<n>`, n = 1 + the number of `new:*` keys, bumped past any key still taken (after a removal). */
 function newColorKey(colors: Color[]): string {
   const taken = new Set(colors.map((c) => c.key));
   let n = colors.filter((c) => isNewKey(c.key)).length + 1;
@@ -122,7 +123,7 @@ export function draftFromProduct(p: Product): Draft {
 }
 
 /**
- * Gives every `new-*` color its permanent key from its English name, unique
+ * Gives every `new:*` color its permanent key from its English name, unique
  * among the keys already taken, and rewrites its sold-out pairs. Saved keys
  * are never changed.
  */

@@ -146,15 +146,15 @@ describe("colors", () => {
     let d = draft();
     d = reduce(d, { type: "addColor" });
     d = reduce(d, { type: "addColor" });
-    expect(d.colors.map((c) => c.key)).toEqual(["black", "white", "new-1", "new-2"]);
-    expect(d.colors[3]).toEqual({ key: "new-2", nameAr: "", nameEn: "", swatch: "#0a0a0a", photos: [] });
+    expect(d.colors.map((c) => c.key)).toEqual(["black", "white", "new:1", "new:2"]);
+    expect(d.colors[3]).toEqual({ key: "new:2", nameAr: "", nameEn: "", swatch: "#0a0a0a", photos: [] });
   });
 
   test("addColor never reuses a temporary key after a removal", () => {
     let d = draft();
     d = reduce(d, { type: "addColor" });
     d = reduce(d, { type: "addColor" });
-    d = reduce(d, { type: "removeColor", key: "new-1" });
+    d = reduce(d, { type: "removeColor", key: "new:1" });
     d = reduce(d, { type: "addColor" });
     const keys = d.colors.map((c) => c.key);
     expect(new Set(keys).size).toBe(keys.length);
@@ -163,11 +163,11 @@ describe("colors", () => {
   test("colorField nameEn never changes the key", () => {
     let d = reduce(draft(), { type: "colorField", key: "black", name: "nameEn", value: "Jet Black" });
     d = reduce(d, { type: "addColor" });
-    d = reduce(d, { type: "colorField", key: "new-1", name: "nameEn", value: "Navy" });
+    d = reduce(d, { type: "colorField", key: "new:1", name: "nameEn", value: "Navy" });
     expect(d.colors.map((c) => [c.key, c.nameEn])).toEqual([
       ["black", "Jet Black"],
       ["white", "white"],
-      ["new-1", "Navy"],
+      ["new:1", "Navy"],
     ]);
   });
 
@@ -255,8 +255,8 @@ describe("assignColorKeys", () => {
   test("assignColorKeys keys new colors from their English name and rewrites sold-out pairs", () => {
     const d = assignColorKeys(
       draft({
-        colors: [color("black", "Black"), color("new-1", "Black"), color("new-2", "أسود")],
-        soldOut: [{ color: "new-1", size: "S" }],
+        colors: [color("black", "Black"), color("new:1", "Black"), color("new:2", "أسود")],
+        soldOut: [{ color: "new:1", size: "S" }],
       }),
     );
     expect(d.colors.map((c) => c.key)).toEqual(["black", "black-2", "color"]);
@@ -273,8 +273,23 @@ describe("assignColorKeys", () => {
     expect(d.soldOut).toEqual([{ color: "white", size: "M" }]);
   });
 
+  test("saved keys that look like slugs of 'New …' names keep their key after a rename", () => {
+    let d = draft({
+      colors: [color("new-navy", "New Navy"), color("new-1", "New 1")],
+      soldOut: [{ color: "new-navy", size: "S" }],
+    });
+    d = reduce(d, { type: "colorField", key: "new-navy", name: "nameEn", value: "Midnight" });
+    d = reduce(d, { type: "colorField", key: "new-1", name: "nameEn", value: "Sand" });
+    d = reduce(d, { type: "addColor" });
+    const added = d.colors[2]?.key ?? "";
+    d = reduce(d, { type: "colorField", key: added, name: "nameEn", value: "New Navy" });
+    const saved = assignColorKeys(d);
+    expect(saved.colors.map((c) => c.key)).toEqual(["new-navy", "new-1", "new-navy-2"]);
+    expect(saved.soldOut).toEqual([{ color: "new-navy", size: "S" }]);
+  });
+
   test("a new color never takes a key a later saved color already has", () => {
-    const d = assignColorKeys(draft({ colors: [color("new-1", "Navy"), color("navy", "Navy blue")] }));
+    const d = assignColorKeys(draft({ colors: [color("new:1", "Navy"), color("navy", "Navy blue")] }));
     expect(d.colors.map((c) => c.key)).toEqual(["navy-2", "navy"]);
   });
 });
