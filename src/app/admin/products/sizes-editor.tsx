@@ -23,7 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/** Size chips in order, reorderable by dragging, with an input that adds a size. */
+import { describedBy, FieldError } from "./field-error";
+
+const DUPLICATE_SIZE = "That size is already there.";
+
+/**
+ * Size chips in order, reorderable by dragging, with an input that adds a
+ * size. The typed text is trimmed like the reducer does; a size already in
+ * the list keeps the text and says so instead of silently clearing it.
+ */
 export function SizesEditor({
   sizes,
   onAdd,
@@ -41,15 +49,24 @@ export function SizesEditor({
   errorId?: string;
 }) {
   const [text, setText] = useState("");
+  const [triedDuplicate, setTriedDuplicate] = useState(false);
+  // Cleared by typing, or when the matching chip is removed.
+  const duplicate = triedDuplicate && sizes.includes(text.trim());
   const dndId = useId();
+  const duplicateId = `${inputId}-duplicate`;
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   function add() {
-    if (!text.trim()) return;
-    onAdd(text);
+    const size = text.trim();
+    if (!size) return;
+    if (sizes.includes(size)) {
+      setTriedDuplicate(true);
+      return;
+    }
+    onAdd(size);
     setText("");
   }
 
@@ -85,16 +102,20 @@ export function SizesEditor({
         <Input
           id={inputId}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setTriedDuplicate(false);
+          }}
           onKeyDown={handleKeyDown}
           placeholder="e.g. M or 32"
-          aria-invalid={errorId ? true : undefined}
-          aria-describedby={errorId}
+          aria-invalid={errorId || duplicate ? true : undefined}
+          aria-describedby={describedBy(duplicate && duplicateId, errorId)}
         />
         <Button type="button" variant="outline" onClick={add}>
           Add
         </Button>
       </div>
+      <FieldError id={duplicateId} message={duplicate ? DUPLICATE_SIZE : undefined} />
     </div>
   );
 }

@@ -2,7 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import type { Color, Product } from "@/lib/catalog/schema";
 
-import { assignColorKeys, type Draft, draftFromProduct, emptyDraft, NEW_KEY_PREFIX, reduce } from "./form-state";
+import {
+  assignColorKeys,
+  autoSlug,
+  type Draft,
+  draftFromProduct,
+  emptyDraft,
+  NEW_KEY_PREFIX,
+  reduce,
+} from "./form-state";
 
 function color(key: string, nameEn = key, photos: Color["photos"] = []): Color {
   return { key, nameAr: nameEn, nameEn, swatch: "#123456", photos };
@@ -80,6 +88,21 @@ describe("names and slug", () => {
     const d = reduce(draft({ slug: "my-link", slugEdited: true }), { type: "nameEn", value: "Oversized Tee" });
     expect(d.nameEn).toBe("Oversized Tee");
     expect(d.slug).toBe("my-link");
+  });
+
+  test("nameEn cuts a long auto-filled slug to 80 characters at a word boundary", () => {
+    // 15 words of "abcdefghi" → 149 characters slugified.
+    const name = Array.from({ length: 15 }, () => "abcdefghi").join(" ");
+    const d = reduce(emptyDraft(), { type: "nameEn", value: name });
+    expect(d.slug.length).toBeLessThanOrEqual(80);
+    expect(d.slug).toBe(Array.from({ length: 8 }, () => "abcdefghi").join("-")); // 79 characters
+    expect(d.slug.endsWith("-")).toBe(false);
+  });
+
+  test("nameEn leaves a long owner-typed slug alone", () => {
+    const long = "a".repeat(100);
+    const d = reduce(draft({ slug: long, slugEdited: true }), { type: "nameEn", value: "x ".repeat(60) });
+    expect(d.slug).toBe(long);
   });
 
   test("slug action marks slugEdited", () => {
@@ -291,5 +314,28 @@ describe("assignColorKeys", () => {
   test("a new color never takes a key a later saved color already has", () => {
     const d = assignColorKeys(draft({ colors: [color("new:1", "Navy"), color("navy", "Navy blue")] }));
     expect(d.colors.map((c) => c.key)).toEqual(["navy-2", "navy"]);
+  });
+});
+
+describe("autoSlug", () => {
+  test("keeps a slug of 80 characters or fewer as is", () => {
+    expect(autoSlug("Oversized Tee")).toBe("oversized-tee");
+    expect(autoSlug("a".repeat(80))).toBe("a".repeat(80));
+  });
+
+  test("keeps exactly 80 characters when a word ends there", () => {
+    expect(autoSlug(`${"a".repeat(80)} more`)).toBe("a".repeat(80));
+  });
+
+  test("cuts at the last hyphen within 80", () => {
+    expect(autoSlug(`${"a".repeat(70)} ${"b".repeat(20)}`)).toBe("a".repeat(70));
+  });
+
+  test("hard-cuts one word longer than 80", () => {
+    expect(autoSlug("a".repeat(100))).toBe("a".repeat(80));
+  });
+
+  test("is still empty for an Arabic-only name", () => {
+    expect(autoSlug("تيشيرت")).toBe("");
   });
 });

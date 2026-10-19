@@ -75,7 +75,8 @@ const productFields = z.object({
     .transform((code) => (code ? code : null)),
   sizes: sizesSchema,
   colors: colorsSchema,
-  soldOut: z.array(z.object({ color: z.string(), size: z.string() })),
+  // Trimmed like the sizes, so a pair typed as " M " still matches the size "M".
+  soldOut: z.array(z.object({ color: z.string().trim(), size: z.string().trim() })),
   sizeChart: photoSchema.nullable(),
   published: z.boolean(),
 });

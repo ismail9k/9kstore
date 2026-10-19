@@ -112,6 +112,16 @@ describe("productInputSchema", () => {
     expect(r.soldOut).toEqual([{ color: "black", size: "S" }]);
   });
 
+  test("trims sold-out sizes and colors so untrimmed pairs keep their mark", () => {
+    const r = productInputSchema.parse({
+      ...validProduct(),
+      sizes: [" M "],
+      soldOut: [{ color: " black ", size: " M " }],
+    });
+    expect(r.sizes).toEqual(["M"]);
+    expect(r.soldOut).toEqual([{ color: "black", size: "M" }]);
+  });
+
   test("empty code becomes null", () => {
     expect(productInputSchema.parse({ ...validProduct(), code: "  " }).code).toBeNull();
     expect(productInputSchema.parse({ ...validProduct(), code: null }).code).toBeNull();

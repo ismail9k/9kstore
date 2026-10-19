@@ -21,6 +21,24 @@ export const NEW_KEY_PREFIX = "new:";
 
 const NEW_COLOR_SWATCH = "#0a0a0a";
 
+/** The schema's limit for the link name (kept here: this file reads only types from the schema). */
+const MAX_SLUG_LENGTH = 80;
+
+/**
+ * The link name auto-filled from the English name: its slug, cut to at most
+ * `MAX_SLUG_LENGTH` characters at the last hyphen that fits (a hard cut when
+ * one word is longer), with no trailing hyphen. Owner-typed names are never cut.
+ */
+export function autoSlug(nameEn: string): string {
+  const slug = slugify(nameEn);
+  if (slug.length <= MAX_SLUG_LENGTH) return slug;
+  // A hyphen right after the limit means the first MAX_SLUG_LENGTH characters end on a whole word.
+  if (slug[MAX_SLUG_LENGTH] === "-") return slug.slice(0, MAX_SLUG_LENGTH);
+  const cut = slug.slice(0, MAX_SLUG_LENGTH);
+  const lastHyphen = cut.lastIndexOf("-");
+  return (lastHyphen > 0 ? cut.slice(0, lastHyphen) : cut).replace(/-+$/, "");
+}
+
 export type Action =
   | { type: "field"; name: keyof ProductInput & string; value: string | number | boolean }
   | { type: "nameEn"; value: string }
@@ -146,7 +164,7 @@ export function reduce(draft: Draft, action: Action): Draft {
     case "field":
       return { ...draft, [action.name]: action.value };
     case "nameEn":
-      return { ...draft, nameEn: action.value, slug: draft.slugEdited ? draft.slug : slugify(action.value) };
+      return { ...draft, nameEn: action.value, slug: draft.slugEdited ? draft.slug : autoSlug(action.value) };
     case "slug":
       return { ...draft, slug: action.value, slugEdited: true };
     case "addSize": {
