@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { switchTarget } from "./gate";
+import { localeGate, switchTarget } from "./gate";
 import { toggleHref } from "./locales";
 
 describe("switchTarget", () => {
@@ -21,5 +21,22 @@ describe("switchTarget", () => {
     const to = new URL(toggleHref("en", "/en//evil.example", ""), "http://x").searchParams.get("to");
     expect(to).toBe("//evil.example");
     expect(switchTarget("ar", to)).toBe("/ar");
+  });
+});
+
+describe("localeGate", () => {
+  test("the bare domain goes to the remembered language, else Arabic", () => {
+    expect(localeGate("/", undefined)).toEqual({ kind: "redirect", pathname: "/ar" });
+    expect(localeGate("/", "en")).toEqual({ kind: "redirect", pathname: "/en" });
+    for (const bad of ["fr", "AR", ""]) expect(localeGate("/", bad)).toEqual({ kind: "redirect", pathname: "/ar" });
+  });
+  test("unprefixed paths get the prefix, keeping the path", () => {
+    expect(localeGate("/p/tee", "en")).toEqual({ kind: "redirect", pathname: "/en/p/tee" });
+    expect(localeGate("/fr/p/tee", undefined)).toEqual({ kind: "redirect", pathname: "/ar/fr/p/tee" });
+  });
+  test("prefixed and reserved paths pass", () => {
+    expect(localeGate("/ar/p/tee", "en")).toEqual({ kind: "next" });
+    expect(localeGate("/en", undefined)).toEqual({ kind: "next" });
+    expect(localeGate("/lang/en", undefined)).toEqual({ kind: "next" });
   });
 });
