@@ -59,8 +59,9 @@ D1. Do these steps in order:
    ```
    `wrangler.jsonc` names both buckets, and a deploy fails while the bucket
    it names doesn't exist.
-3. **Apply the migrations.** `pnpm db:migrate:staging` (already done for
-   this repo's staging database). Before the first production release, run
+3. **Apply the migrations.** `pnpm db:migrate:staging` (done for this
+   repo's staging database up to `0002`; `0003` needs applying, see the
+   note after these steps). Before the first production release, run
    `pnpm db:migrate:prod`; the production database exists but has no tables
    yet.
 4. **Set the secrets** on the staging Worker:
@@ -97,9 +98,13 @@ D1. Do these steps in order:
 
 Remote migrations are run by hand on each schema change: Workers Builds does
 not apply them. `migrations/0003_was_published.sql` adds
-`products.was_published`, which every product read requires: apply it with
-`pnpm db:migrate:staging` and `pnpm db:migrate:prod` before the code that
-uses it deploys to that Worker, or every page that reads products fails.
+`products.was_published`. Without it, pages still render, but creating,
+saving, publishing or hiding a product in the admin fails with "no such
+column: was_published", and every hidden product's link answers 404 instead
+of "no longer available". Branch previews share the staging database, so
+run `pnpm db:migrate:staging` before this code's preview or merge into
+`develop` is used, and `pnpm db:migrate:prod` before its first production
+deploy.
 
 Photos are processed on upload by Cloudflare Images; the binding needs no
 resource. If the first upload on staging answers "Photo processing isn't
