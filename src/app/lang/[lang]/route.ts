@@ -8,6 +8,8 @@ import { isLocale, LANG_COOKIE } from "@/lib/i18n/locales";
  * The language toggle's target: remembers the chosen language in a cookie and
  * redirects to the same page in that language. `to` is the current path
  * without its locale prefix; `switchTarget` keeps the redirect same-origin.
+ * `private, no-store`, because Workers Cache is on and a cached copy would
+ * replay the Set-Cookie to other visitors.
  */
 export async function GET(request: NextRequest, ctx: RouteContext<"/lang/[lang]">): Promise<Response> {
   const { lang } = await ctx.params;
@@ -15,6 +17,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/lang/[lang]"
 
   const target = switchTarget(lang, request.nextUrl.searchParams.get("to"));
   const res = NextResponse.redirect(new URL(target, request.url), 307);
+  res.headers.set("Cache-Control", "private, no-store");
   res.cookies.set(LANG_COOKIE, lang, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
