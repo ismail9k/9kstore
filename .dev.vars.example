@@ -1,5 +1,6 @@
 NEXTJS_ENV=development
-# The password the owner types on /admin/login.
+# The password the owner types on /admin/login. At least 12 characters;
+# a shorter one leaves the admin "not set up".
 ADMIN_PASSWORD=change-me
 # Signs the owner's login cookie. Generate one with: openssl rand -base64 32
-SESSION_SECRET=replace-with-32-random-bytes-base64
+SESSION_SECRET=replace-me

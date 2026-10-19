@@ -1,7 +1,19 @@
 import { timingSafeEqual } from "./password";
+import type { Secrets } from "./secrets";
 
-/** Session payload. Both times are milliseconds since the epoch. */
-export type TokenPayload = { iat: number; exp: number };
+/**
+ * Session payload. `iat` and `exp` are milliseconds since the epoch; `v` is
+ * the session version at login (see `auth_state` in migrations/0002_auth.sql).
+ */
+export type TokenPayload = { iat: number; exp: number; v: number };
+
+/**
+ * The HMAC key for session tokens. It includes the admin password, so
+ * changing `ADMIN_PASSWORD` (or `SESSION_SECRET`) invalidates every session.
+ */
+export function signingKey(secrets: Secrets): string {
+  return `${secrets.sessionSecret}\n${secrets.adminPassword}`;
+}
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -33,13 +45,13 @@ async function hmac(data: string, secret: string): Promise<string> {
 
 function isPayload(value: unknown): value is TokenPayload {
   if (typeof value !== "object" || value === null) return false;
-  const { iat, exp } = value as Record<string, unknown>;
-  return Number.isFinite(iat) && Number.isFinite(exp);
+  const { iat, exp, v } = value as Record<string, unknown>;
+  return Number.isFinite(iat) && Number.isFinite(exp) && Number.isInteger(v);
 }
 
 /** `base64url(JSON payload).base64url(HMAC-SHA256 of the first segment)`. */
 export async function signToken(payload: TokenPayload, secret: string): Promise<string> {
-  const body = toBase64url(encoder.encode(JSON.stringify({ iat: payload.iat, exp: payload.exp })));
+  const body = toBase64url(encoder.encode(JSON.stringify({ iat: payload.iat, exp: payload.exp, v: payload.v })));
   return `${body}.${await hmac(body, secret)}`;
 }
 
@@ -63,7 +75,7 @@ export async function verifyToken(
     const payload: unknown = JSON.parse(decoder.decode(fromBase64url(body)));
     if (!isPayload(payload)) return null;
     if (payload.exp <= now) return null;
-    return { iat: payload.iat, exp: payload.exp };
+    return { iat: payload.iat, exp: payload.exp, v: payload.v };
   } catch {
     return null;
   }

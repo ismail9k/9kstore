@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSecrets } from "@/lib/auth/secrets";
-import { COOKIE_NAME } from "@/lib/auth/session";
-import { verifyToken } from "@/lib/auth/token";
+import { COOKIE_NAME, isValidSessionToken } from "@/lib/auth/session";
 
 const LOGIN_PATH = "/admin/login";
 
@@ -12,9 +11,10 @@ const LOGIN_PATH = "/admin/login";
  * still call `requireOwner()`; this is not the security boundary.
  */
 export async function proxy(request: NextRequest) {
-  const secrets = await getSecrets();
   const token = request.cookies.get(COOKIE_NAME)?.value;
-  const loggedIn = secrets !== null && (await verifyToken(token, secrets.sessionSecret)) !== null;
+  // The same check as `requireOwner()`, so a revoked cookie cannot bounce
+  // between this proxy and the pages. Never throws.
+  const loggedIn = await isValidSessionToken(token, await getSecrets());
   const { pathname } = request.nextUrl;
   const onLogin = pathname === LOGIN_PATH || pathname === `${LOGIN_PATH}/`;
 

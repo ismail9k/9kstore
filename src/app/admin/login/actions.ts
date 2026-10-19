@@ -1,27 +1,52 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { isLocked } from "@/lib/auth/attempts";
 import { timingSafeEqual } from "@/lib/auth/password";
 import { getSecrets } from "@/lib/auth/secrets";
 import { createSession } from "@/lib/auth/session";
+import { clearLoginAttempts, recordLoginAttempt } from "@/lib/auth/store";
 
 export type LoginState = { error?: string };
 
-/** How long a wrong password waits before answering, to slow guessing. */
+/** How long a refused attempt waits before answering, to slow guessing. */
 const WRONG_PASSWORD_DELAY_MS = 1000;
 
-/** Checks the owner's password; on success sets the session and goes to /admin. */
+const wait = () => new Promise((resolve) => setTimeout(resolve, WRONG_PASSWORD_DELAY_MS));
+
+/** The client's IP as Cloudflare reports it, else the first proxy hop. */
+async function clientIp(): Promise<string> {
+  const list = await headers();
+  const forwarded = list.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return list.get("cf-connecting-ip")?.trim() || forwarded || "unknown";
+}
+
+/**
+ * Checks the owner's password; on success sets the session and goes to
+ * /admin. Every attempt is counted before the password is compared, so a
+ * burst of parallel requests cannot all slip past the attempt limit.
+ */
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const secrets = await getSecrets();
   if (!secrets) return { error: "Admin is not set up yet." };
 
+  const ip = await clientIp();
+  const now = Date.now();
+  const record = await recordLoginAttempt(ip, now);
+  if (isLocked(record, now)) {
+    await wait();
+    return { error: "Too many tries. Wait 15 minutes and try again." };
+  }
+
   const password = formData.get("password");
   if (typeof password !== "string" || !timingSafeEqual(password, secrets.adminPassword)) {
-    await new Promise((resolve) => setTimeout(resolve, WRONG_PASSWORD_DELAY_MS));
+    await wait();
     return { error: "Wrong password." };
   }
 
+  await clearLoginAttempts(ip);
   await createSession();
   redirect("/admin");
 }
