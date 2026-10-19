@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { lang } from "next/root-params";
 
 import "@/app/globals.css";
+import { SiteHeader } from "@/components/site/site-header";
 import { getSettings } from "@/lib/catalog";
 import { plex } from "@/lib/i18n/font";
 import { dirOf, isLocale } from "@/lib/i18n/locales";
@@ -21,10 +22,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function StoreLayout({ children }: LayoutProps<"/[lang]">) {
   const locale = await lang();
   if (!isLocale(locale)) notFound();
+  const settings = await getSettings();
 
   return (
     <html lang={locale} dir={dirOf(locale)} className={`${plex.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SiteHeader locale={locale} storeName={settings.storeName} />
+        {children}
+      </body>
     </html>
   );
 }
