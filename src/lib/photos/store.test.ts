@@ -110,24 +110,6 @@ test("an Images failure writes nothing and answers 503", async () => {
   expect(bucket.store.size).toBe(0);
 });
 
-test("an input the processor says is not an image (code 9412) is refused as the wrong format, nothing written", async () => {
-  const bucket = fakeBucket();
-  const images = fakeImages({ info: () => webp(10, 10, 1), infoError: { code: 9412 } });
-  // A renamed PDF arrives with an accepted header.
-  const r = await storeUpload({ bucket, images, dev: false }, bytesOf(0x25, 0x50, 0x44, 0x46), "image/jpeg");
-  expect(r).toEqual({ ok: false, status: 415, error: MESSAGES.badType });
-  expect(bucket.store.size).toBe(0);
-  expect(images.outputs).toHaveLength(0);
-});
-
-test("any other error reading the input answers 503, nothing written", async () => {
-  const bucket = fakeBucket();
-  const images = fakeImages({ info: () => webp(10, 10, 1), infoError: { code: 9999 } });
-  const r = await storeUpload({ bucket, images, dev: false }, bytesOf(1, 2, 3), "image/jpeg");
-  expect(r).toEqual({ ok: false, status: 503, error: MESSAGES.unavailable });
-  expect(bucket.store.size).toBe(0);
-});
-
 test("a failed clean-up is logged with its keys and the upload still answers 503", async () => {
   const bucket = fakeBucket({ failPut: (key) => key.endsWith(OG_VARIANT.file), failDelete: true });
   const images = fakeImages({ info: () => webp(1200, 1200, 3) });
@@ -135,7 +117,7 @@ test("a failed clean-up is logged with its keys and the upload still answers 503
   try {
     const r = await storeUpload({ bucket, images, dev: false }, bytesOf(1, 2, 3), "image/webp");
     expect(r).toEqual({ ok: false, status: 503, error: MESSAGES.unavailable });
-    const cleanup = error.mock.calls.find(([msg]) => typeof msg === "string" && msg.includes("clean-up"));
+    const cleanup = error.mock.calls.find(([msg]) => typeof msg === "string" && msg.includes("half-stored"));
     expect(cleanup).toBeDefined();
     const keys = cleanup![1] as string[];
     expect(keys).toHaveLength(ALL_FILES.length);

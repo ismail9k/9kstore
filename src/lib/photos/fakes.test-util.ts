@@ -92,9 +92,7 @@ export function fakeImages(opts: { info: (bytes: Uint8Array) => ImageInfo; fail?
   const images = {
     outputs,
     async info(stream: ReadableStream<Uint8Array>) {
-      if (opts.infoError !== undefined) {
-        throw Object.assign(new Error(`IMAGES_INFO_ERROR ${opts.infoError}`), { code: opts.infoError });
-      }
+      if (opts.infoError !== undefined) throw imagesError(opts.infoError);
       return opts.info(await toBytes(stream));
     },
     input(stream: ReadableStream<Uint8Array>) {
