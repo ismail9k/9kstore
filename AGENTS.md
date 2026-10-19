@@ -39,7 +39,8 @@ Node 24+ and pnpm 11 (`packageManager` pins the version).
 - After editing `wrangler.jsonc`: `pnpm cf-typegen` to regenerate
   `cloudflare-env.d.ts`
 - D1: `pnpm db:migrate:local`, `pnpm db:seed:local` (sample product, local
-  only); remote: `pnpm db:migrate:staging`, `pnpm db:migrate:prod`, run by
+  only), `pnpm photos:seed:local` (its photos, into the local photos bucket);
+  remote: `pnpm db:migrate:staging`, `pnpm db:migrate:prod`, run by
   hand on each schema change. Setup steps: README "First-time setup".
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, test and the Worker
@@ -95,6 +96,18 @@ login-attempt and session-version tables from `migrations/0002_auth.sql`.
 (`src/lib/i18n/messages/*.ts`), `formatPrice`/`isolateLtr` and the gates
 (`localeGate`, `switchTarget`). The header's language toggle goes through the
 route `/lang/[lang]`, which sets the cookie and redirects back.
+
+Photos live in R2 (`PHOTOS`) as `photos/<id>/master` plus the variants
+listed in `src/lib/photos/variants.ts`. `POST /admin/photos` processes each
+upload through the Images binding (`IMAGES`) and stores the master and every
+variant; `GET /photos/[id]/[file]` serves variants as immutable and fills a
+missing one from the master. Customer pages render photos through
+`src/components/photo.tsx` (`photoSrcSet`/`sizes`), and link previews use
+`photoOgSrc`. The degraded paths (serving the master, uploading without
+variants) run only under `NEXTJS_ENV=development`; a deployed Worker answers
+503 instead. Workers Cache is on (`cache` in `wrangler.jsonc`), so any new
+response that must not be cached has to carry `private` or `no-store` (Next
+pages already do).
 
 The brief's suggested target, which the config is set up for:
 
