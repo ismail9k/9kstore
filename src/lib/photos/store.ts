@@ -22,9 +22,17 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const UNAVAILABLE: StoreError = { status: 503, error: MESSAGES.unavailable };
 /** `ImagesError.code` when the input is not an image at all. */
 const NOT_AN_IMAGE = 9412;
+/** `ImagesError.code` when the input is an image in a format the processor can't read (a TIFF, for one). */
+const UNSUPPORTED_FORMAT = 9520;
 
+/** Whether `info()` failed because of the owner's file rather than the processor. */
 function isNotAnImage(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === NOT_AN_IMAGE;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === NOT_AN_IMAGE || error.code === UNSUPPORTED_FORMAT)
+  );
 }
 
 /** A fresh photo id: 32 lowercase hex characters. */

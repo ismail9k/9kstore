@@ -102,6 +102,17 @@ test("a file the processor can't read as an image is refused with 415; another i
   expect(outage.store.size).toBe(0);
 });
 
+test("an image in a format the processor doesn't support (a TIFF) is refused with 415", async () => {
+  const bucket = fakeBucket();
+  const tiff = fakeImages({ info: () => webp(10, 10, 1), infoError: 9520 });
+  expect(await storeUpload({ bucket, images: tiff, dev: false }, bytesOf(73, 73, 42, 0), "image/jpeg")).toEqual({
+    ok: false,
+    status: 415,
+    error: MESSAGES.badType,
+  });
+  expect(bucket.store.size).toBe(0);
+});
+
 test("an Images failure writes nothing and answers 503", async () => {
   const bucket = fakeBucket();
   const images = fakeImages({ info: () => ({ format: "image/jpeg", width: 800, height: 600, fileSize: 3 }), fail: true });
