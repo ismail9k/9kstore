@@ -74,7 +74,16 @@ D1. Do these steps in order:
    must be at least 32 characters. Branch previews use the staging Worker's
    secrets. Changing `ADMIN_PASSWORD` signs out every session, and logging
    out signs out every device.
-5. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
+5. **When the domain exists,** add
+   ```jsonc
+   "vars": { "PUBLIC_ORIGIN": "https://<domain>" }
+   ```
+   at the **top level only** of `wrangler.jsonc` (staging and branch previews
+   keep using the request's origin), run `pnpm cf-typegen`, and commit both
+   files. Link-preview tags and the WhatsApp message's link then use the
+   domain. Until then, every absolute URL uses the origin the request came
+   in on.
+6. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
    both secrets. The example values are deliberately too short and must be
    replaced (password at least 12 characters, secret at least 32), or the
    admin shows "not set up". Then:
@@ -87,7 +96,10 @@ D1. Do these steps in order:
    and open http://localhost:3000/admin.
 
 Remote migrations are run by hand on each schema change: Workers Builds does
-not apply them.
+not apply them. `migrations/0003_was_published.sql` adds
+`products.was_published`, which every product read requires: apply it with
+`pnpm db:migrate:staging` and `pnpm db:migrate:prod` before the code that
+uses it deploys to that Worker, or every page that reads products fails.
 
 Photos are processed on upload by Cloudflare Images; the binding needs no
 resource. If the first upload on staging answers "Photo processing isn't
@@ -129,6 +141,16 @@ in both `/ar/p/<slug>` and `/en/p/<slug>`:
 5. Mark the size sold out in the admin, then tap the button on the page that
    is still open. The page reloads with "That size just sold out", and
    WhatsApp does not open. Mark the size in stock again afterwards.
+6. Paste `/en/p/<slug>` and `/ar/p/<slug>` into a WhatsApp chat with
+   yourself and into an Instagram DM. The preview shows the photo, the name
+   and the price, in that link's language. With `?color=<key>` added, the
+   photo is that color's. A link to a product that was published and is now
+   hidden opens the "no longer available" page with the button back to the
+   catalog.
+
+WhatsApp and Facebook cache link previews, so a changed photo or price may not
+show at once. Facebook's Sharing Debugger
+(`https://developers.facebook.com/tools/debug/`) re-scrapes a link.
 
 ## Checks
 

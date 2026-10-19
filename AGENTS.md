@@ -97,7 +97,12 @@ login-attempt and session-version tables from `migrations/0002_auth.sql`.
 (`localeGate`, `switchTarget`). The header's language toggle goes through the
 route `/lang/[lang]`, which sets the cookie and redirects back. Product pages
 live at `src/app/(store)/[lang]/p/[slug]/`, and the order button is a
-redirecting `GET …/order` route built on `src/lib/order`.
+redirecting `GET …/order` route built on `src/lib/order`. Absolute URLs —
+Open Graph and canonical tags, the message's link — come from
+`getSiteOrigin()` in `src/lib/site/origin.ts`, which prefers the
+`PUBLIC_ORIGIN` Worker variable (unset until the domain exists) over the
+request origin; `storeMetadata()` beside it builds every customer page's
+tags.
 
 Photos live in R2 (`PHOTOS`) as `photos/<id>/master` plus the variants
 listed in `src/lib/photos/variants.ts`. `POST /admin/photos` processes each
@@ -148,7 +153,15 @@ The brief's suggested target, which the config is set up for:
   - New strings go in both `src/lib/i18n/messages/en.ts` and `ar.ts`.
 - **Sold-out products stay visible,** marked "Sold out", and a hidden
   product's link shows a "no longer available" page, not a 404, so old story
-  links keep working.
+  links keep working (`p/[slug]/page.tsx` branches on `linkState()` and
+  renders `unavailable.tsx` with a 200 and `noindex`; the order route still
+  answers 404). That page is for once-published products only
+  (`products.was_published` from `migrations/0003_was_published.sql`, set in
+  SQL on first publish and never lowered); a draft that was never published
+  answers 404 like an unknown slug, so its name stays secret.
+- **Streaming metadata is off** (`htmlLimitedBots: /.*/` in `next.config.ts`)
+  so link-preview tags land in `<head>` for every fetcher, not only Next's bot
+  list. Don't remove it to shave TTFB; the pages block on D1 anyway.
 - **Mobile weight matters.** Most visitors arrive in Instagram's in-app browser
   on 4G, and the catalog should be usable in about 2 seconds. Serve images in
   modern formats at screen-fitting sizes.

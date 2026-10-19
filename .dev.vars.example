@@ -4,3 +4,8 @@ NEXTJS_ENV=development
 ADMIN_PASSWORD=change-me
 # Signs the owner's login cookie. Generate one with: openssl rand -base64 32
 SESSION_SECRET=replace-me
+# The site's public origin for link-preview tags and the WhatsApp message's
+# link, e.g. https://shop.example. Leave unset to use the request's origin
+# (right for local, previews and staging). Production sets it in
+# wrangler.jsonc's top-level "vars" once the domain exists.
+# PUBLIC_ORIGIN=
