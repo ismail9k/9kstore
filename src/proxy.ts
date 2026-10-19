@@ -20,6 +20,9 @@ import { LANG_COOKIE } from "@/lib/i18n/locales";
  * Action POSTs pass through, so a save with an ended session gets the
  * action's own "logged out" answer instead of a redirect. Pages and Server
  * Actions still check the session; this is not the security boundary.
+ *
+ * Photo files under `/photos/` are served by their own route and skip the
+ * router.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -59,5 +62,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|photos|.*\\..*).*)"],
+  matcher: ["/((?!_next|photos/|.*\\..*).*)"],
 };
