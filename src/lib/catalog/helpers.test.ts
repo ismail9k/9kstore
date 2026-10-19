@@ -150,13 +150,14 @@ describe("railItems", () => {
     const items = railItems({ colors: [color("a"), color("b", [{ key: "b1" }]), color("c", [{ key: "c1" }, { key: "c2" }])] });
     expect(items.map((i) => [i.color.key, i.photo.key])).toEqual([["b", "b1"], ["c", "c2"]]);
   });
-  test("caps at RAIL_MAX", () => {
-    const colors = ["a", "b", "c", "d", "e"].map((k) => color(k, [{ key: k }]));
-    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d"]);
+  test("keeps every photographed color, more than four included", () => {
+    const keys = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const colors = keys.map((k) => color(k, [{ key: k }]));
+    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(keys);
   });
-  test("caps after skipping photoless colors", () => {
-    const colors = [color("bare"), ...["a", "b", "c", "d"].map((k) => color(k, [{ key: k }]))];
-    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d"]);
+  test("keeps every photographed color after skipping photoless ones", () => {
+    const colors = [color("bare"), ...["a", "b", "c", "d", "e"].map((k) => color(k, [{ key: k }])), color("none")];
+    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d", "e"]);
   });
 });
 

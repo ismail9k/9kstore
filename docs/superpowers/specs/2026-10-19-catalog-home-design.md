@@ -212,7 +212,7 @@ export function nameIn(item: { nameAr: string; nameEn: string }, locale: Locale)
  *  else the first, else null. */
 export function railPhoto(color: Color): Photo | null;
 
-/** Up to RAIL_MAX (4) colors with a rail photo, in the owner's order. */
+/** Every color with a rail photo, in the owner's order. */
 export function railItems(product: Product): { color: Color; photo: Photo }[];
 
 /** The first product in catalog order with at least one rail item, or null. */
@@ -284,8 +284,8 @@ page.
 
 On a 390 px phone the first screen fetches: the HTML (dynamic, ~15 KB),
 the CSS, Next's runtime for the toggle (already shipped by #6), the three
-Plex weights in two subsets (already shipped by #6), and the four rail
-tees at `640.webp` (cutouts, 20–40 KB each, `fetchpriority=high`). Grid
+Plex weights in two subsets (already shipped by #6), and the rail tees (four when seeded)
+at `640.webp` (cutouts, 20–40 KB each, `fetchpriority=high`). Grid
 photos are `loading="lazy"` and the browser fetches the first row as it
 nears the viewport, at `320.webp` or `640.webp` by `sizes`. Nothing on the
 page adds a client component, a font weight or a third-party request.
@@ -299,7 +299,7 @@ Vitest, next to the code, logic only (no component or snapshot tests):
 
 - `helpers.test.ts`: `nameIn` picks by locale; `railPhoto` → second photo
   with two, first with one, null with none; `railItems` skips photoless
-  colors, keeps owner order, caps at 4; `featuredProduct` → first product
+  colors, keeps owner order, keeps every photographed color (more than four too); `featuredProduct` → first product
   with a rail item (skips one without photos), null for an empty list.
 - `rows.test.ts`: `parseProductRows` returns the good rows and the bad
   row's id and reason for a row with invalid JSON in `colors` and for a
@@ -328,9 +328,16 @@ the DevTools throttling check above.
    the top otherwise. No admin field. Cost if a "feature this one" switch
    is wanted later: a boolean column and a migration — an hour; the page
    then prefers it over the order.
-3. **The rail hangs up to four colors.** Every color, as the guidelines
-   say, until a product has more than four, where a phone cannot show them.
-   Cost: a constant (`RAIL_MAX`).
+3. **The rail hangs every photographed color**, as the guidelines say
+   (reversed from "up to four" in review). Up to four tees keep the full
+   widths (46vw, 30vw from `sm`, 224px from `lg`) and the outer two run off a
+   phone's edges; with more, each tee shrinks to the smaller of two bounds:
+   n - 1 pitches span the viewport (the first and last tees at least half
+   on screen), and the first tee, half under the second, keeps 44px on
+   screen to tap. CSS only: the row carries `--n`, and `--tee` and the
+   overlap margins derive from it (formulas in `rail.tsx`). Cost: past
+   eight colors a 390px phone cannot give every tee a 44px tap target; a
+   product with that many would need a scrolling rail.
 4. **Photo 2 is the hanger shot**, by convention, stated in the admin. The
    data model has no shot kind, adding one needs admin UI that is not this
    issue's, and the guidelines already prescribe two shots per color with

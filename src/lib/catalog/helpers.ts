@@ -53,9 +53,6 @@ export function cardPhoto(p: Pick<Product, "colors">): Photo | null {
   return p.colors[0]?.photos[0] ?? null;
 }
 
-/** The most colors a product hangs on the home page rail. */
-export const RAIL_MAX = 4;
-
 /** The Arabic or English name, by locale. */
 export function nameIn(item: { nameAr: string; nameEn: string }, locale: Locale): string {
   return locale === "ar" ? item.nameAr : item.nameEn;
@@ -66,14 +63,14 @@ export function railPhoto(color: Color): Photo | null {
   return color.photos[1] ?? color.photos[0] ?? null;
 }
 
-/** The colors that hang on the rail, in the owner's order: photoless ones skipped, at most RAIL_MAX. */
+/** The colors that hang on the rail, in the owner's order: every color with a photo, photoless ones skipped. */
 export function railItems(product: Pick<Product, "colors">): { color: Color; photo: Photo }[] {
   const items: { color: Color; photo: Photo }[] = [];
   for (const color of product.colors) {
     const photo = railPhoto(color);
     if (photo) items.push({ color, photo });
   }
-  return items.slice(0, RAIL_MAX);
+  return items;
 }
 
 /** The home page hero: the first product with at least one rail item, else null. */
