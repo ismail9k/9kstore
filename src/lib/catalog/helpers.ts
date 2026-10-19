@@ -2,7 +2,9 @@
  * Pure catalog helpers shared by the admin and the customer pages.
  * No I/O; safe to import from client and server code.
  */
-import type { Photo, Product } from "./schema";
+import type { Locale } from "@/lib/i18n/locales";
+
+import type { Color, Photo, Product } from "./schema";
 
 type StockFields = Pick<Product, "sizes" | "colors" | "soldOut">;
 
@@ -49,6 +51,34 @@ export function isSoldOut(p: StockFields): boolean {
 /** The first photo of the first color, the catalog card photo. */
 export function cardPhoto(p: Pick<Product, "colors">): Photo | null {
   return p.colors[0]?.photos[0] ?? null;
+}
+
+/** The most colors a product hangs on the home page rail. */
+export const RAIL_MAX = 4;
+
+/** The Arabic or English name, by locale. */
+export function nameIn(item: { nameAr: string; nameEn: string }, locale: Locale): string {
+  return locale === "ar" ? item.nameAr : item.nameEn;
+}
+
+/** A color's rail photo: its second photo (on the hanger) when it has two or more, else its first. */
+export function railPhoto(color: Color): Photo | null {
+  return color.photos[1] ?? color.photos[0] ?? null;
+}
+
+/** The colors that hang on the rail, in the owner's order: photoless ones skipped, at most RAIL_MAX. */
+export function railItems(product: Pick<Product, "colors">): { color: Color; photo: Photo }[] {
+  const items: { color: Color; photo: Photo }[] = [];
+  for (const color of product.colors) {
+    const photo = railPhoto(color);
+    if (photo) items.push({ color, photo });
+  }
+  return items.slice(0, RAIL_MAX);
+}
+
+/** The home page hero: the first product with at least one rail item, else null. */
+export function featuredProduct(products: Product[]): Product | null {
+  return products.find((p) => railItems(p).length > 0) ?? null;
 }
 
 /** A new product goes first: one below the current minimum, 0 when empty. */
