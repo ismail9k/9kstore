@@ -60,7 +60,9 @@ D1. Do these steps in order:
    secrets. Changing `ADMIN_PASSWORD` signs out every session, and logging
    out signs out every device.
 4. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
-   both secrets, then:
+   both secrets. The example values are deliberately too short and must be
+   replaced (password at least 12 characters, secret at least 32), or the
+   admin shows "not set up". Then:
    ```sh
    pnpm db:migrate:local
    pnpm db:seed:local   # optional: one sample product
