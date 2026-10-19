@@ -20,6 +20,12 @@ export type Served = {
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const UNAVAILABLE: StoreError = { status: 503, error: MESSAGES.unavailable };
+/** `ImagesError.code` when the input is not an image at all. */
+const NOT_AN_IMAGE = 9412;
+
+function isNotAnImage(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === NOT_AN_IMAGE;
+}
 
 /** A fresh photo id: 32 lowercase hex characters. */
 export function newPhotoId(): string {
@@ -65,7 +71,10 @@ async function writeAll(bucket: R2Bucket, master: { key: string } & Rendered, va
     await bucket.put(master.key, master.bytes, putOptions(master.contentType));
     await Promise.all(variants.map((v) => bucket.put(v.key, v.bytes, putOptions(v.contentType))));
   } catch (cause) {
-    await bucket.delete([master.key, ...variants.map((v) => v.key)]).catch(() => undefined);
+    const keys = [master.key, ...variants.map((v) => v.key)];
+    await bucket.delete(keys).catch((deleteError: unknown) => {
+      console.error("photos: removing a half-stored upload failed", keys, deleteError);
+    });
     throw cause;
   }
 }
@@ -108,17 +117,25 @@ export async function storeUpload(
     return storeWithoutProcessor(bucket, bytes, declaredType);
   }
 
+  let info: ImageInfo | { format: "image/svg+xml" };
+  try {
+    info = await infoOf(images, bytes);
+  } catch (cause) {
+    // A renamed PDF, a corrupt file or an unreadable format: the owner's file, not the processor.
+    if (isNotAnImage(cause)) return { ok: false, status: 415, error: MESSAGES.badType };
+    console.error("photos: reading the upload's format failed", cause);
+    return { ok: false, ...UNAVAILABLE };
+  }
+  const rejection = checkInput(info);
+  if (rejection) return { ok: false, ...rejection };
+  if (!("width" in info)) return { ok: false, status: 415, error: MESSAGES.badType };
+
   const key = newPhotoId();
   let master: Rendered;
   let width: number;
   let height: number;
   let variants: ({ key: string } & Rendered)[];
   try {
-    const info = await infoOf(images, bytes);
-    const rejection = checkInput(info);
-    if (rejection) return { ok: false, ...rejection };
-    if (!("width" in info)) return { ok: false, status: 415, error: MESSAGES.badType };
-
     // A kept PNG/WebP is stored under its real format, not the declared header.
     master = needsMaster(info) ? await render(images, bytes, MASTER_PLAN) : { bytes, contentType: info.format };
     // Dimensions of the stored master: a re-encode bakes in the EXIF orientation.

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import { decodeFake, fakeBucket, fakeImages } from "./fakes.test-util";
 import { MESSAGES, type ImageInfo } from "./process";
@@ -82,12 +82,70 @@ test("an input over 20 MB is refused with 413 and nothing written", async () => 
   expect(bucket.store.size).toBe(0);
 });
 
+test("a file the processor can't read as an image is refused with 415; another info error is a 503", async () => {
+  const notAnImage = fakeBucket();
+  const pdf = fakeImages({ info: () => webp(10, 10, 1), infoError: 9412 });
+  expect(await storeUpload({ bucket: notAnImage, images: pdf, dev: false }, bytesOf(37, 80, 68, 70), "image/jpeg")).toEqual({
+    ok: false,
+    status: 415,
+    error: MESSAGES.badType,
+  });
+  expect(notAnImage.store.size).toBe(0);
+
+  const outage = fakeBucket();
+  const down = fakeImages({ info: () => webp(10, 10, 1), infoError: 9523 });
+  expect(await storeUpload({ bucket: outage, images: down, dev: false }, bytesOf(1, 2, 3), "image/jpeg")).toEqual({
+    ok: false,
+    status: 503,
+    error: MESSAGES.unavailable,
+  });
+  expect(outage.store.size).toBe(0);
+});
+
 test("an Images failure writes nothing and answers 503", async () => {
   const bucket = fakeBucket();
   const images = fakeImages({ info: () => ({ format: "image/jpeg", width: 800, height: 600, fileSize: 3 }), fail: true });
   const r = await storeUpload({ bucket, images, dev: false }, bytesOf(1, 2, 3), "image/jpeg");
   expect(r).toEqual({ ok: false, status: 503, error: MESSAGES.unavailable });
   expect(bucket.store.size).toBe(0);
+});
+
+test("an input the processor says is not an image (code 9412) is refused as the wrong format, nothing written", async () => {
+  const bucket = fakeBucket();
+  const images = fakeImages({ info: () => webp(10, 10, 1), infoError: { code: 9412 } });
+  // A renamed PDF arrives with an accepted header.
+  const r = await storeUpload({ bucket, images, dev: false }, bytesOf(0x25, 0x50, 0x44, 0x46), "image/jpeg");
+  expect(r).toEqual({ ok: false, status: 415, error: MESSAGES.badType });
+  expect(bucket.store.size).toBe(0);
+  expect(images.outputs).toHaveLength(0);
+});
+
+test("any other error reading the input answers 503, nothing written", async () => {
+  const bucket = fakeBucket();
+  const images = fakeImages({ info: () => webp(10, 10, 1), infoError: { code: 9999 } });
+  const r = await storeUpload({ bucket, images, dev: false }, bytesOf(1, 2, 3), "image/jpeg");
+  expect(r).toEqual({ ok: false, status: 503, error: MESSAGES.unavailable });
+  expect(bucket.store.size).toBe(0);
+});
+
+test("a failed clean-up is logged with its keys and the upload still answers 503", async () => {
+  const bucket = fakeBucket({ failPut: (key) => key.endsWith(OG_VARIANT.file), failDelete: true });
+  const images = fakeImages({ info: () => webp(1200, 1200, 3) });
+  const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    const r = await storeUpload({ bucket, images, dev: false }, bytesOf(1, 2, 3), "image/webp");
+    expect(r).toEqual({ ok: false, status: 503, error: MESSAGES.unavailable });
+    const cleanup = error.mock.calls.find(([msg]) => typeof msg === "string" && msg.includes("clean-up"));
+    expect(cleanup).toBeDefined();
+    const keys = cleanup![1] as string[];
+    expect(keys).toHaveLength(ALL_FILES.length);
+    expect(keys.some((k) => k.endsWith("/master"))).toBe(true);
+    // The original put failure is what the upload reports, not the delete failure.
+    const stored = error.mock.calls.find(([msg]) => msg === "photos: storing the upload failed");
+    expect(String(stored?.[1])).toContain("put");
+  } finally {
+    error.mockRestore();
+  }
 });
 
 test("a failed write removes what was already written and answers 503", async () => {

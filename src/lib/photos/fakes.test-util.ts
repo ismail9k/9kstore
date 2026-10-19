@@ -25,8 +25,8 @@ function streamOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
   });
 }
 
-/** `failPut` makes `put` reject for the keys it returns true for. */
-export function fakeBucket(opts: { failPut?: (key: string) => boolean } = {}): FakeBucket {
+/** `failPut` makes `put` reject for the keys it returns true for; `failDelete` makes `delete` reject. */
+export function fakeBucket(opts: { failPut?: (key: string) => boolean; failDelete?: boolean } = {}): FakeBucket {
   const store = new Map<string, StoredObject>();
   let counter = 0;
 
@@ -67,10 +67,16 @@ export function fakeBucket(opts: { failPut?: (key: string) => boolean } = {}): F
       return meta(key, entry);
     },
     async delete(keys: string | string[]) {
+      if (opts.failDelete) throw new Error("fakeBucket: delete failed");
       for (const key of Array.isArray(keys) ? keys : [keys]) store.delete(key);
     },
   };
   return bucket as unknown as FakeBucket;
+}
+
+/** An error shaped like the runtime's `ImagesError`: an `Error` with a numeric `code`. */
+export function imagesError(code: number, message = `IMAGES_INFO_ERROR ${code}`): ImagesError {
+  return Object.assign(new Error(message), { code }) as ImagesError;
 }
 
 export type FakeImages = ImagesBinding & { outputs: { transform: ImageTransform; output: ImageOutputOptions }[] };
@@ -78,13 +84,17 @@ export type FakeImages = ImagesBinding & { outputs: { transform: ImageTransform;
 /**
  * `info` answers `info()` from the bytes it is given. Every `output()` yields
  * the bytes of `{"w": transform.width, "f": output.format}`, so a test can see
- * which plan produced each stored object. `fail: true` makes `output()` throw.
+ * which plan produced each stored object. `fail: true` makes `output()` throw;
+ * `infoError` makes `info()` throw an `ImagesError`-shaped error with that code.
  */
-export function fakeImages(opts: { info: (bytes: Uint8Array) => ImageInfo; fail?: boolean }): FakeImages {
+export function fakeImages(opts: { info: (bytes: Uint8Array) => ImageInfo; fail?: boolean; infoError?: number }): FakeImages {
   const outputs: FakeImages["outputs"] = [];
   const images = {
     outputs,
     async info(stream: ReadableStream<Uint8Array>) {
+      if (opts.infoError !== undefined) {
+        throw Object.assign(new Error(`IMAGES_INFO_ERROR ${opts.infoError}`), { code: opts.infoError });
+      }
       return opts.info(await toBytes(stream));
     },
     input(stream: ReadableStream<Uint8Array>) {
