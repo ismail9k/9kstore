@@ -11,5 +11,5 @@ test("formatPrice uses Western digits, comma grouping and the locale's unit", ()
 });
 
 test("isolateLtr wraps text in LRI…PDI", () => {
-  expect(isolateLtr("TEE-01")).toBe("⁦TEE-01⁩");
+  expect(isolateLtr("TEE-01")).toBe("\u2066TEE-01\u2069");
 });

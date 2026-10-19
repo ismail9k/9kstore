@@ -9,6 +9,7 @@ import { getSettings } from "@/lib/catalog";
 import { AdminHeader } from "./admin-header";
 
 export const metadata: Metadata = {
+  title: "9k Store",
   robots: { index: false, follow: false },
 };
 

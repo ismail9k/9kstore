@@ -39,4 +39,7 @@ describe("localeGate", () => {
     expect(localeGate("/en", undefined)).toEqual({ kind: "next" });
     expect(localeGate("/lang/en", undefined)).toEqual({ kind: "next" });
   });
+  test("bare /lang is not the toggle route, so it gets a prefix like any other path", () => {
+    expect(localeGate("/lang", undefined)).toEqual({ kind: "redirect", pathname: "/ar/lang" });
+  });
 });

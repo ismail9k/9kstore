@@ -10,5 +10,5 @@ export function formatPrice(priceEgp: number, locale: Locale): string {
 
 /** Wraps left-to-right text (codes, sizes, numbers) in LRI…PDI so it stays readable inside RTL text. */
 export function isolateLtr(text: string): string {
-  return `⁦${text}⁩`;
+  return `\u2066${text}\u2069`;
 }

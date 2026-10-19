@@ -135,6 +135,11 @@ The brief's suggested target, which the config is set up for:
 - **Mobile weight matters.** Most visitors arrive in Instagram's in-app browser
   on 4G, and the catalog should be usable in about 2 seconds. Serve images in
   modern formats at screen-fitting sizes.
+- **A page-level `notFound()` returns 404, but the server HTML is Next's
+  `__next_error__` shell;** the localized not-found page and header render
+  from the RSC payload once JavaScript runs. Unknown URLs under `/<lang>/`
+  reach it through `src/app/(store)/[lang]/[...rest]/page.tsx`, which must
+  stay; keep `experimental.globalNotFound` off.
 
 ## Agent configuration
 
