@@ -102,6 +102,34 @@ The login already locks a client IP out for 15 minutes after 5 tries within
 IP, so someone sharing the owner's IP (the same Wi-Fi or mobile carrier NAT)
 can lock the owner out for 15 minutes.
 
+### Owner follow-up: test the order button on real phones
+
+Laptop browsers and `pnpm preview` can't stand in for Instagram's in-app
+browser, so test the tap on real phones whenever the order path changes
+(`src/lib/order`, the product page, or its `order` route). A phone can't reach
+`localhost`, so use the branch's staging preview URL (or staging itself) with a
+WhatsApp number set in `/admin/settings` there.
+
+Test on four browsers: Safari and Instagram on an iPhone, and Chrome and
+Instagram on an Android phone. To open a link in Instagram's browser, send the
+product URL to yourself in an Instagram DM and tap it there. In each browser,
+in both `/ar/p/<slug>` and `/en/p/<slug>`:
+
+1. Pick a color, then a size. Tap "Order on WhatsApp". WhatsApp opens (the
+   app, or its web page that offers to open the app) with the message already
+   typed.
+2. The message has every line: greeting, product and color, size, price, code
+   and the link. The price matches the page.
+3. In the Arabic message, the size, the price and the code read correctly
+   inside the Arabic lines: no boxes, no stray marks, and nothing reordered.
+   If a phone shows boxes, remove the three `isolateLtr` calls in
+   `src/lib/order/message.ts` (spec Call 14).
+4. Tap the link at the end of the message. It opens the same product with the
+   same color selected.
+5. Mark the size sold out in the admin, then tap the button on the page that
+   is still open. The page reloads with "That size just sold out", and
+   WhatsApp does not open. Mark the size in stock again afterwards.
+
 ## Checks
 
 `pnpm install` sets up a Husky pre-commit hook that runs lint-staged, which
