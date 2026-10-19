@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { getSecrets, type Secrets } from "./secrets";
 import { bumpSessionVersion, getSessionVersion } from "./store";
@@ -66,11 +67,16 @@ export async function destroySession(): Promise<void> {
   (await cookies()).delete({ name: COOKIE_NAME, path: COOKIE_PATH });
 }
 
-/** Whether this request carries a valid owner cookie. False when secrets are missing. */
-export async function getSession(): Promise<boolean> {
+/**
+ * Whether this request carries a valid owner cookie. False when secrets are
+ * missing; never throws. Wrapped in React `cache()` so the admin layout and
+ * page share one session-version read per render; in Server Actions (not a
+ * render pass) every call reads afresh.
+ */
+export const getSession = cache(async (): Promise<boolean> => {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   return isValidSessionToken(token, await getSecrets());
-}
+});
 
 /** Every admin page and Server Action calls this first. */
 export async function requireOwner(): Promise<void> {

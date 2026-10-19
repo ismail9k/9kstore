@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireOwner } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 import { createProduct, productInputSchema, updateProduct, type SaveResult } from "@/lib/catalog";
 
 import type { Draft } from "./form-state";
-import { issuesToErrors, ownerErrorMap, prepareDraft, SAVE_FAILED, SLUG_TAKEN } from "./save-input";
+import { issuesToErrors, LOGGED_OUT, ownerErrorMap, prepareDraft, SAVE_FAILED, SLUG_TAKEN } from "./save-input";
 
 export type SaveProductResult = { ok: true } | { ok: false; errors: Record<string, string> };
 
@@ -18,9 +18,11 @@ const failed: SaveProductResult = { ok: false, errors: { form: SAVE_FAILED } };
  * holds a message for the whole form. On success the caller shows the toast
  * and navigates to /admin (the action does not redirect, so the toast can
  * show). Server Actions are public endpoints: `draft` is treated as untrusted.
+ * Logged out (the session ended while editing), it returns a form error
+ * instead of redirecting, so the form keeps the owner's edits.
  */
 export async function saveProduct(id: string | null, draft: Draft): Promise<SaveProductResult> {
-  await requireOwner();
+  if (!(await getSession())) return { ok: false, errors: { form: LOGGED_OUT } };
   if (id !== null && (typeof id !== "string" || id.length === 0)) return failed;
 
   const prepared = prepareDraft(draft);

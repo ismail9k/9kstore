@@ -9,6 +9,8 @@
 import { assignColorKeys, type Draft } from "./form-state";
 
 export const SAVE_FAILED = "Couldn't save. Try again.";
+/** A save sent after the session ended: the form keeps the draft so nothing is lost. */
+export const LOGGED_OUT = "You were logged out. Log in again in a new tab, then save.";
 export const SLUG_TAKEN = "Another product already uses this link name.";
 export const PRICE_INVALID = "Enter a price in whole pounds.";
 const FIELD_INVALID = "Check this field and try again.";

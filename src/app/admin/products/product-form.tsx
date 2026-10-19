@@ -154,7 +154,8 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
         return;
       }
       setErrors(result.errors);
-      toast.error(CHECK_FIELDS);
+      // A form-level message (e.g. logged out) says more than "check the marked fields".
+      toast.error(result.errors.form ?? CHECK_FIELDS);
     });
   }
 

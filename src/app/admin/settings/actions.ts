@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireOwner } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 import { updateSettings } from "@/lib/catalog";
 import type { Settings, SettingsInput } from "@/lib/catalog/schema";
 
-import { SAVE_FAILED } from "../products/save-input";
+import { LOGGED_OUT, SAVE_FAILED } from "../products/save-input";
 import { parseSettingsInput } from "./settings-input";
 
 export type SaveSettingsResult = { ok: true; settings: Settings } | { ok: false; errors: Record<string, string> };
@@ -16,9 +16,11 @@ export type SaveSettingsResult = { ok: true; settings: Settings } | { ok: false;
  * `form` holds a message for the whole form. On success returns the saved
  * settings (the WhatsApp number as digits only) so the form shows what was
  * stored. Server Actions are public endpoints: `input` is treated as untrusted.
+ * Logged out (the session ended while editing), it returns a form error
+ * instead of redirecting, so the form keeps the owner's edits.
  */
 export async function saveSettings(input: SettingsInput): Promise<SaveSettingsResult> {
-  await requireOwner();
+  if (!(await getSession())) return { ok: false, errors: { form: LOGGED_OUT } };
 
   const parsed = parseSettingsInput(input);
   if (!parsed.ok) return parsed;
