@@ -2,10 +2,13 @@ import { describe, expect, test } from "vitest";
 
 import {
   cardPhoto,
+  colorByKey,
   colorKey,
   DEFAULT_HOOK_TOP,
   featuredProduct,
   hookOffset,
+  initialColor,
+  isColorSoldOut,
   isInStock,
   isSoldOut,
   nameIn,
@@ -13,6 +16,7 @@ import {
   normalizeWhatsapp,
   railItems,
   railPhoto,
+  sizeAvailability,
   slugify,
   uniqueSlug,
 } from "./helpers";
@@ -186,4 +190,34 @@ describe("featuredProduct", () => {
   });
   test("is null when no product has a photo", () => expect(featuredProduct([product([color("a")])])).toBeNull());
   test("is null for an empty catalog", () => expect(featuredProduct([])).toBeNull());
+});
+
+describe("colorByKey", () => {
+  const p = product([color("grey"), color("black")]);
+  test("finds a color", () => expect(colorByKey(p, "black")?.key).toBe("black"));
+  test("is null for an unknown key", () => expect(colorByKey(p, "pink")).toBeNull());
+});
+
+describe("initialColor", () => {
+  const p = product([color("grey"), color("black")]);
+  test("picks the named color", () => expect(initialColor(p, "black").key).toBe("black"));
+  test.each([undefined, "pink", ["black", "grey"]])("falls back to the first color for %j", (key) =>
+    expect(initialColor(p, key).key).toBe("grey"));
+});
+
+describe("sizeAvailability", () => {
+  const p = { sizes: ["S", "M", "L", "XL"], colors: [color("black")], soldOut: [{ color: "black", size: "S" }] };
+  test("lists every size in order with its stock", () =>
+    expect(sizeAvailability(p, "black")).toEqual([
+      { size: "S", inStock: false }, { size: "M", inStock: true }, { size: "L", inStock: true }, { size: "XL", inStock: true },
+    ]));
+  test("marks every size out for an unknown color", () =>
+    expect(sizeAvailability(p, "pink").every((s) => !s.inStock)).toBe(true));
+});
+
+describe("isColorSoldOut", () => {
+  const p = { sizes: ["S", "M"], colors: [color("black"), color("grey")], soldOut: [{ color: "black", size: "S" }, { color: "black", size: "M" }] };
+  test("true when every size of the color is sold out", () => expect(isColorSoldOut(p, "black")).toBe(true));
+  test("false when a size is in stock", () => expect(isColorSoldOut(p, "grey")).toBe(false));
+  test("true for an unknown color", () => expect(isColorSoldOut(p, "pink")).toBe(true));
 });
