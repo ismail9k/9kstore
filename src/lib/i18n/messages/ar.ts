@@ -9,4 +9,7 @@ export const ar = {
   notFound: { title: "الصفحة غير موجودة",
               body: "هذه الصفحة غير موجودة أو تم نقلها.",
               back: "الرجوع إلى المتجر" },
+  home: { eyebrow: "إصدار جديد", headlineTop: "صُنع", headlineAccent: "لكل يوم.",
+          viewProduct: "شاهد المنتج", empty: "لا توجد منتجات بعد — تابعونا على إنستجرام." },
+  footer: { instagram: "إنستجرام", whatsapp: "واتساب" },
 } satisfies Messages;
