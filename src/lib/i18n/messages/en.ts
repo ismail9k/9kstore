@@ -10,6 +10,7 @@ export const en = {
   home: { eyebrow: "New drop", headlineTop: "Made for", headlineAccent: "every day.",
           viewProduct: "View product", empty: "Nothing here yet — follow us on Instagram." },
   footer: { instagram: "Instagram", whatsapp: "WhatsApp" },
+  order: { code: "Code" },
 } as const;
 
 /** The catalog's shape with every leaf widened to `string`, so `ar` must have the same keys but its own wording. */

@@ -12,4 +12,5 @@ export const ar = {
   home: { eyebrow: "إصدار جديد", headlineTop: "صُنع", headlineAccent: "لكل يوم.",
           viewProduct: "شاهد المنتج", empty: "لا توجد منتجات بعد — تابعونا على إنستجرام." },
   footer: { instagram: "إنستجرام", whatsapp: "واتساب" },
+  order: { code: "الكود" },
 } satisfies Messages;
