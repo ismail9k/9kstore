@@ -3,7 +3,9 @@ import { describe, expect, test } from "vitest";
 import {
   cardPhoto,
   colorKey,
+  DEFAULT_HOOK_TOP,
   featuredProduct,
+  hookOffset,
   isInStock,
   isSoldOut,
   nameIn,
@@ -158,6 +160,21 @@ describe("railItems", () => {
   test("keeps every photographed color after skipping photoless ones", () => {
     const colors = [color("bare"), ...["a", "b", "c", "d", "e"].map((k) => color(k, [{ key: k }])), color("none")];
     expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+});
+
+describe("hookOffset", () => {
+  test("is the measured hookTop for a square or unsized photo", () => {
+    expect(hookOffset({ key: "k", hookTop: 0.0525 })).toBe(0.0525);
+    expect(hookOffset({ key: "k", width: 1200, height: 1200, hookTop: 0.08 })).toBe(0.08);
+  });
+  test("scales by height / width, as a fraction of the box width", () => {
+    expect(hookOffset({ key: "k", width: 1200, height: 1500, hookTop: 0.1 })).toBeCloseTo(0.125);
+  });
+  test("falls back to DEFAULT_HOOK_TOP for a photo measured before hookTop existed", () => {
+    expect(DEFAULT_HOOK_TOP).toBe(0.1);
+    expect(hookOffset({ key: "k" })).toBe(DEFAULT_HOOK_TOP);
+    expect(hookOffset({ key: "k", width: 1000, height: 2000 })).toBeCloseTo(0.2);
   });
 });
 

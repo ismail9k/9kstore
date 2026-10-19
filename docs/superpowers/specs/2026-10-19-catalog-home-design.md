@@ -56,7 +56,6 @@ belong to #5 and #7; the home page links to that URL.
   (Call 2).
 - A logo file. The wordmark from #6's header stands in until the owner's
   files arrive, exactly as the issue says.
-- Measuring each cutout's hook pixel (Call 5).
 
 ## Anti-goals
 
@@ -132,14 +131,15 @@ follow the guidelines' "The hanging rail":
   `rounded-full`, a vertical gradient from mid-grey to near-black
   (`bg-gradient-to-b from-[#8a8a8a] to-foreground`; the guidelines allow
   this one gradient). The **tees** hang below it: a flex row, centered,
-  one `<a>` per rail photo, each tee `w-[46vw]` on phones, `w-[30vw]` from
-  `sm`, `w-56` from `lg`, with a negative horizontal margin (about `-mx-[4vw]`,
-  `-mx-4` from `lg`) so they overlap slightly and the outer ones run off the
-  phone's edges, as in the reference. The row is `dir="ltr"` regardless of
+  one `<a>` per rail photo, each tee `--tee` wide: 46vw on phones, 30vw from
+  `sm`, 224px from `lg` with up to four tees, narrower with more (Call 3),
+  with a negative horizontal margin of a fixed fraction of `--tee` (4vw at
+  the full widths, 16px from `lg`) so they overlap slightly and the outer
+  ones run off the phone's edges, as in the reference. The row is `dir="ltr"` regardless of
   page language: it is a picture of a rail, not text, and should look the
-  same in both languages. Each tee's image box is positioned so its top edge
-  sits on the bar; the photos are shot with the hook at the top center, so
-  the hook meets the bar (Call 5). Each `<a>` links to
+  same in both languages. Each tee is aligned by its own hook: it is pulled
+  up by `hookOffset(photo) × --tee` plus the bar's 3px, so the top of its
+  hook meets the bar's top edge (Call 5). Each `<a>` links to
   `/<lang>/p/<slug>?color=<colorKey>` and has `aria-label` "<product name>
   — <color name>" in the page language; its `<Photo>` has `alt=""` (the
   label carries the meaning), `priority`, and
@@ -214,6 +214,13 @@ export function railPhoto(color: Color): Photo | null;
 
 /** Every color with a rail photo, in the owner's order. */
 export function railItems(product: Product): { color: Color; photo: Photo }[];
+
+/** Assumed hook top for a photo without a measured one: 0.10. */
+export const DEFAULT_HOOK_TOP: number;
+
+/** How far below its box top a tee's hook starts, as a fraction of the box
+ *  width: (photo.hookTop ?? DEFAULT_HOOK_TOP) × height / width (1 if unsized). */
+export function hookOffset(photo: Photo): number;
 
 /** The first product in catalog order with at least one rail item, or null. */
 export function featuredProduct(products: Product[]): Product | null;
@@ -301,6 +308,11 @@ Vitest, next to the code, logic only (no component or snapshot tests):
   with two, first with one, null with none; `railItems` skips photoless
   colors, keeps owner order, keeps every photographed color (more than four too); `featuredProduct` → first product
   with a rail item (skips one without photos), null for an empty list.
+- `helpers.test.ts` also: `hookOffset` → `hookTop` scaled by height / width,
+  `DEFAULT_HOOK_TOP` without one; `hook.test.ts`: `firstOpaqueRow` and
+  `hookTopOf`; `upload.test.ts`: a color upload carries the measured
+  `hookTop`, a failed measurement doesn't fail it; `schema.test.ts`: `hookTop`
+  bounded to 0..1 and kept through a save.
 - `rows.test.ts`: `parseProductRows` returns the good rows and the bad
   row's id and reason for a row with invalid JSON in `colors` and for a
   row whose `price_egp` is negative; all good → `rejected` empty.
@@ -344,15 +356,17 @@ the DevTools throttling check above.
    the flat one first (the card). With one photo the rail hangs it anyway.
    Cost if wrong: a `shot` field on `Photo` and a toggle in the photo
    strip — half a day; `railPhoto` becomes a one-line lookup.
-5. **Hooks align by the image box, not by the first opaque pixel.** The
-   guidelines prescribe per-photo hook alignment; measuring it needs either
-   canvas work on the customer page (JavaScript the page otherwise does not
-   ship) or an upload-time scan stored on the photo. The cutouts are shot
-   at the same scale with the hook at the top center, so the error is a few
-   pixels at phone size. Cost: the measured gap with the seed cutouts was
-   ~15-25px, so the rail pulls the tees up by a fixed amount; a per-photo
-   upload-time `hookOffset` in #3's pipeline and a `--hook` translate per
-   tee remains the precise fix — half a day, no page JavaScript.
+5. **Each tee is aligned by its own hook** (reversed from "by the image
+   box" in review). `Photo` gains an optional `hookTop`: the first row from
+   the top with a pixel whose alpha is above 16, as a fraction of the image
+   height (0..1, 4 decimals). The admin measures it in the browser while a
+   color photo uploads (`admin/photos/hook.ts`, `createImageBitmap` and an
+   `OffscreenCanvas`) and stores it on the photo; the schema bounds it, and a
+   failed decode leaves it out without failing the upload. The rail sets
+   `--hook` per tee from `hookOffset`, so the customer page ships no
+   JavaScript. Photos uploaded before this get `DEFAULT_HOOK_TOP` (0.10)
+   until re-uploaded; the dev seed carries the measured values. Cost: none
+   beyond re-uploading old photos if their hooks look off.
 6. **Rail photos are `priority`; grid photos are lazy.** The hero fills a
    phone's first screen, so the grid is below the fold; marking cards
    `priority` would compete with the tees for bandwidth. Cost: none

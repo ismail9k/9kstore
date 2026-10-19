@@ -63,6 +63,22 @@ export function railPhoto(color: Color): Photo | null {
   return color.photos[1] ?? color.photos[0] ?? null;
 }
 
+/**
+ * The hook top assumed for a photo uploaded before `hookTop` was measured:
+ * the seed cutouts' typical transparent margin above the hook.
+ */
+export const DEFAULT_HOOK_TOP = 0.1;
+
+/**
+ * How far above its box a tee's hook starts, as a fraction of the box
+ * width (the rail sizes tees by width): `hookTop × height / width`, with
+ * a square box when the dimensions are unknown.
+ */
+export function hookOffset(photo: Photo): number {
+  const aspect = photo.width && photo.height ? photo.height / photo.width : 1;
+  return (photo.hookTop ?? DEFAULT_HOOK_TOP) * aspect;
+}
+
 /** The colors that hang on the rail, in the owner's order: every color with a photo, photoless ones skipped. */
 export function railItems(product: Pick<Product, "colors">): { color: Color; photo: Photo }[] {
   const items: { color: Color; photo: Photo }[] = [];

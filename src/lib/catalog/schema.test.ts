@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  photoSchema,
   productInputSchema,
   productSchema,
   settingsInputSchema,
@@ -45,6 +46,25 @@ function messagesAt(result: { success: boolean; error?: { issues: { path: Proper
     .filter((i) => JSON.stringify(i.path) === JSON.stringify(path))
     .map((i) => i.message);
 }
+
+describe("photoSchema hookTop", () => {
+  test("is optional and kept when between 0 and 1", () => {
+    expect(photoSchema.parse({ key: "tee-1" })).toEqual({ key: "tee-1" });
+    expect(photoSchema.parse({ key: "tee-1", hookTop: 0.0525 })).toEqual({ key: "tee-1", hookTop: 0.0525 });
+    expect(photoSchema.parse({ key: "tee-1", hookTop: 0 }).hookTop).toBe(0);
+    expect(photoSchema.parse({ key: "tee-1", hookTop: 1 }).hookTop).toBe(1);
+  });
+  test("is refused outside 0..1 or when not a number", () => {
+    for (const hookTop of [-0.01, 1.01, "0.1", Number.NaN]) {
+      expect(photoSchema.safeParse({ key: "tee-1", hookTop }).success).toBe(false);
+    }
+  });
+  test("survives a product save", () => {
+    const input = validProduct();
+    input.colors[0]!.photos[0]!.hookTop = 0.0731;
+    expect(productInputSchema.parse(input).colors[0]?.photos[0]?.hookTop).toBe(0.0731);
+  });
+});
 
 describe("productInputSchema", () => {
   test("accepts a full valid product", () =>

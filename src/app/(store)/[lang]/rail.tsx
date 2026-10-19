@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 
 import { Photo } from "@/components/photo";
-import { nameIn, railItems, type Product } from "@/lib/catalog";
+import { hookOffset, nameIn, railItems, type Product } from "@/lib/catalog";
 import { withLocale, type Locale } from "@/lib/i18n/locales";
 
 /**
@@ -10,8 +10,11 @@ import { withLocale, type Locale } from "@/lib/i18n/locales";
  * product's colors hanging from it, each linking to that color on the
  * product page. Always LTR: it is a picture of a rail, not text.
  * The photos are shot with the hook at the top center, below a transparent
- * margin of 8-12% of the width, so the image row is pulled up under the bar
- * (which is drawn above it) by about that much and the hooks meet the bar.
+ * margin that differs per photo, so each tee is aligned by its own hook:
+ * its `--hook` (`hookOffset`, the hook's top as a fraction of the box width,
+ * measured at upload) pulls it up by `--hook × --tee` plus the bar's 3px,
+ * under the bar (drawn above it), so the top of every hook meets the bar's
+ * top edge.
  *
  * Full bleed: a 100vw box with -50vw margins, centered by its flex-column
  * parent (`self-center`), so it reaches both viewport edges. 100vw counts an
@@ -48,17 +51,17 @@ export function Rail({ product, locale }: { product: Product; locale: Locale }) 
   return (
     <div dir="ltr" className="-mx-[50vw] w-screen self-center overflow-x-hidden">
       <div aria-hidden className="relative z-10 h-[3px] w-full rounded-full bg-gradient-to-b from-[#8a8a8a] to-foreground" />
-      {/* The pull-up (~12% of each image box's width) compensates for the hanger cutouts' transparent top margin (spec Call 5). */}
       <div
         style={{ "--n": items.length } as CSSProperties}
-        className={`-mt-[5.5vw] flex justify-center sm:-mt-[3.6vw] lg:-mt-[27px] ${items.length > 4 ? FIT : FULL}`}
+        className={`flex items-start justify-center ${items.length > 4 ? FIT : FULL}`}
       >
         {items.map(({ color, photo }) => (
           <Link
             key={color.key}
             href={withLocale(locale, `/p/${product.slug}`, `?color=${color.key}`)}
             aria-label={`${name} — ${nameIn(color, locale)}`}
-            className="-mx-[calc(var(--tee)*4/46)] block w-(--tee) shrink-0 sm:-mx-[calc(var(--tee)*4/30)] lg:-mx-[calc(var(--tee)/14)]"
+            style={{ "--hook": hookOffset(photo) } as CSSProperties}
+            className="mt-[calc(var(--hook)*var(--tee)*-1_-_3px)] -mx-[calc(var(--tee)*4/46)] block w-(--tee) shrink-0 sm:-mx-[calc(var(--tee)*4/30)] lg:-mx-[calc(var(--tee)/14)]"
           >
             {/* sizes: the full widths, an upper bound for the slot (a shrunk tee may fetch one width class larger). */}
             <Photo
