@@ -11,7 +11,8 @@ import { PHOTO_ID } from "@/lib/photos/variants";
 
 import { normalizeWhatsapp } from "./helpers";
 
-const URL_SAFE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/** The slug and color-key rule: lowercase letters and digits in hyphen-separated runs. */
+export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const requiredText = (label: string, max: number) =>
   z
@@ -32,7 +33,7 @@ export const photoSchema = z.object({
 });
 
 export const colorSchema = z.object({
-  key: z.string().regex(URL_SAFE, "This color needs an English name with letters or numbers"),
+  key: z.string().regex(SLUG, "This color needs an English name with letters or numbers"),
   nameAr: requiredText("the Arabic color name", 60),
   nameEn: requiredText("the English color name", 60),
   swatch: z.string().regex(/^#[0-9a-f]{6}$/i, "Pick a color like #1A2B3C"),
@@ -65,7 +66,7 @@ const productFields = z.object({
     .string()
     .min(1, "Enter a link name")
     .max(80, "Use at most 80 characters for the link name")
-    .regex(URL_SAFE, "Use lowercase letters, numbers and hyphens only"),
+    .regex(SLUG, "Use lowercase letters, numbers and hyphens only"),
   nameAr: requiredText("the Arabic name", 120),
   nameEn: requiredText("the English name", 120),
   descriptionAr: optionalText("the Arabic description", 1000),
