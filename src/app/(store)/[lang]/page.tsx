@@ -1,28 +1,68 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { lang } from "next/root-params";
+import { cache } from "react";
 
-import { featuredProduct, getSettings, listProducts } from "@/lib/catalog";
-import { isLocale } from "@/lib/i18n/locales";
+import {
+  cardPhoto,
+  featuredProduct,
+  getSettings,
+  listProducts,
+  nameIn,
+  type Product,
+  type Settings,
+} from "@/lib/catalog";
+import { isLocale, type Locale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
+import { ogImageSize, photoOgSrc } from "@/lib/photos/urls";
+import { storeMetadata, type PreviewImage } from "@/lib/site/metadata";
+import { getSiteOrigin } from "@/lib/site/origin";
 
 import { Hero } from "./hero";
 import { ProductCard } from "./product-card";
 
-export async function generateMetadata(): Promise<Metadata> {
+/**
+ * The page's data, read fresh from D1 on every request; `cache()` is
+ * request-scoped, so `generateMetadata` and the page share one read of the
+ * settings and one of the published products.
+ */
+const load = cache(async () => {
   const locale = await lang();
   if (!isLocale(locale)) notFound();
-  const settings = await getSettings();
-  return {
+  const [settings, products] = await Promise.all([getSettings(), listProducts({ publishedOnly: true })]);
+  return { locale, settings, products };
+});
+
+/**
+ * The link preview: the first product in catalog order with a card photo,
+ * else the store logo (an empty shop), else no image.
+ */
+function homePreview(products: Product[], settings: Settings, locale: Locale): PreviewImage | null {
+  for (const product of products) {
+    const photo = cardPhoto(product);
+    if (photo) return { src: photoOgSrc(photo), ...(ogImageSize(photo) ?? {}), alt: nameIn(product, locale) };
+  }
+  const logo = settings.logo;
+  if (logo) return { src: photoOgSrc(logo), ...(ogImageSize(logo) ?? {}), alt: settings.storeName };
+  return null;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, settings, products } = await load();
+  return storeMetadata({
+    origin: await getSiteOrigin(),
+    locale,
+    path: "/",
     title: settings.storeName,
     description: getMessages(locale).meta.description,
-  };
+    siteName: settings.storeName,
+    image: homePreview(products, settings, locale),
+  });
 }
 
 export default async function Home() {
-  const locale = await lang();
-  if (!isLocale(locale)) notFound();
-  const [t, products] = [getMessages(locale), await listProducts({ publishedOnly: true })];
+  const { locale, products } = await load();
+  const t = getMessages(locale);
   const featured = featuredProduct(products);
 
   return (
