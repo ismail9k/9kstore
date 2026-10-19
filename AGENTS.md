@@ -79,9 +79,21 @@ to the code as `*.test.ts(x)`.
 Next.js 16 App Router under `src/app`, deployed to Cloudflare Workers through
 OpenNext (`@opennextjs/cloudflare`). Import from `src` with the `@/` alias.
 Product and settings data live in D1 behind `src/lib/catalog` (server-only;
-never cache its reads). The admin is at `/admin` behind `src/proxy.ts` +
-`requireOwner()`; auth lives in `src/lib/auth`, with the login-attempt and
-session-version tables from `migrations/0002_auth.sql`.
+never cache its reads).
+
+The app has two root layouts. Customer pages live under
+`src/app/(store)/[lang]/`, where `lang` is a root param read with
+`next/root-params`; the layout sets `lang` and `dir` on `<html>`. The admin
+lives under `src/app/(admin)/admin/` with its own LTR English root layout, and
+dnd-kit stays admin-only there. `src/proxy.ts` is the site's router: it
+redirects `/` and unprefixed paths to the language in the `9k_lang` cookie
+(else Arabic) and runs the optimistic admin gate for `/admin`, which pages
+back with `requireOwner()`; auth lives in `src/lib/auth`, with the
+login-attempt and session-version tables from `migrations/0002_auth.sql`.
+`src/lib/i18n` holds the locales, the message catalog
+(`src/lib/i18n/messages/*.ts`), `formatPrice`/`isolateLtr` and the gates
+(`localeGate`, `switchTarget`). The header's language toggle goes through the
+route `/lang/[lang]`, which sets the cookie and redirects back.
 
 The brief's suggested target, which the config is set up for:
 
@@ -111,6 +123,12 @@ The brief's suggested target, which the config is set up for:
 - **Arabic is first-class, not mirrored English.** Use RTL layout, keep prices,
   sizes and codes readable inside RTL text, use Western digits (0–9) in both
   languages, and give every customer-facing string an Arabic version.
+  - Logical Tailwind classes only on customer pages (`ps-`/`pe-`/`ms-`/`me-`/
+    `start-`/`end-`, never `pl-`/`left-`), and `rtl:-scale-x-100` on
+    directional icons.
+  - Every size, code and price goes through `<Ltr>`/`<Price>`; use
+    `formatPrice`/`isolateLtr` for plain text such as titles and messages.
+  - New strings go in both `src/lib/i18n/messages/en.ts` and `ar.ts`.
 - **Sold-out products stay visible,** marked "Sold out", and a hidden
   product's link shows a "no longer available" page, not a 404, so old story
   links keep working.

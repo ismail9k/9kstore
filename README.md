@@ -12,6 +12,12 @@ the project's source of truth.
 
 Requires Node 24+ and pnpm 11.
 
+The store is bilingual: customer URLs are `/ar/...` and `/en/...`. The bare
+domain and unprefixed paths redirect to the language in the `9k_lang` cookie,
+which only the header's language toggle sets (through `/lang/<ar|en>`), and
+otherwise to Arabic. The font (IBM Plex Sans Arabic) is downloaded by
+`next/font` at build time, so builds need network access.
+
 ## Scripts
 
 | Command | What it does |
