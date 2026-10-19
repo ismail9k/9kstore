@@ -44,6 +44,7 @@ const product: Product = {
   soldOut: [{ color: "black", size: "S" }],
   sizeChart: { key: "chart.jpg" },
   published: true,
+  wasPublished: true,
   sortOrder: -1,
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-02T00:00:00.000Z",
@@ -69,6 +70,7 @@ describe("draftFromProduct", () => {
     expect(d.slugEdited).toBe(true);
     expect(d).not.toHaveProperty("id");
     expect(d).not.toHaveProperty("sortOrder");
+    expect(d).not.toHaveProperty("wasPublished");
     expect(d).not.toHaveProperty("createdAt");
     expect(d).not.toHaveProperty("updatedAt");
     expect(d.slug).toBe("tee");

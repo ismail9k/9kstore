@@ -11,6 +11,7 @@ import {
   isColorSoldOut,
   isInStock,
   isSoldOut,
+  linkState,
   nameIn,
   nextSortOrder,
   normalizeWhatsapp,
@@ -41,6 +42,7 @@ function product(colors: Color[]): Product {
     soldOut: [{ color: "black", size: "S" }],
     sizeChart: { key: "tee-size-chart", width: 800, height: 600 },
     published: false,
+    wasPublished: false,
     sortOrder: -3,
     createdAt: "2026-10-19T10:00:00.000Z",
     updatedAt: "2026-10-19T11:30:00.000Z",
@@ -220,4 +222,18 @@ describe("isColorSoldOut", () => {
   test("true when every size of the color is sold out", () => expect(isColorSoldOut(p, "black")).toBe(true));
   test("false when a size is in stock", () => expect(isColorSoldOut(p, "grey")).toBe(false));
   test("true for an unknown color", () => expect(isColorSoldOut(p, "pink")).toBe(true));
+});
+
+describe("linkState", () => {
+  test("a published product is live", () => {
+    expect(linkState({ published: true, wasPublished: true })).toBe("live");
+  });
+
+  test("a hidden product that was published once is unavailable", () => {
+    expect(linkState({ published: false, wasPublished: true })).toBe("unavailable");
+  });
+
+  test("a never-published draft is missing, like an unknown slug", () => {
+    expect(linkState({ published: false, wasPublished: false })).toBe("missing");
+  });
 });

@@ -26,6 +26,7 @@ const product: Product = {
   soldOut: [{ color: "black", size: "S" }],
   sizeChart: null,
   published: true,
+  wasPublished: true,
   sortOrder: 0,
   createdAt: "2026-10-19T00:00:00.000Z",
   updatedAt: "2026-10-19T00:00:00.000Z",

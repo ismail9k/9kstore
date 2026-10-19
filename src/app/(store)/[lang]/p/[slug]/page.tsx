@@ -9,6 +9,7 @@ import {
   getProductBySlug,
   getSettings,
   initialColor,
+  linkState,
   nameIn,
   SLUG,
   SLUG_MAX,
@@ -28,16 +29,17 @@ import { Unavailable } from "./unavailable";
 /**
  * The page's data, read fresh from D1 on every request; `cache()` is
  * request-scoped, so `generateMetadata` and the page share one pair of reads.
- * A malformed slug is rejected before touching D1; a missing product is a
- * 404. A hidden product is returned: the callers branch on `published`. A
- * corrupt row throws and stays a 500.
+ * A malformed slug is rejected before touching D1; a missing product and a
+ * never-published draft are both a 404 (a draft's name stays secret). A
+ * product hidden after being published is returned: the callers branch on
+ * `published`. A corrupt row throws and stays a 500.
  */
 const load = cache(async (slug: string) => {
   const locale = await lang();
   if (!isLocale(locale)) notFound();
   if (slug.length > SLUG_MAX || !SLUG.test(slug)) notFound();
   const product = await getProductBySlug(slug);
-  if (!product) notFound();
+  if (!product || linkState(product) === "missing") notFound();
   const settings = await getSettings();
   return { locale, product, settings };
 });

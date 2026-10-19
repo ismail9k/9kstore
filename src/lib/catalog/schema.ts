@@ -108,6 +108,8 @@ export const productInputSchema = productFields.transform(dropOrphanSoldOut);
 export const productSchema = productFields
   .extend({
     id: z.string().min(1),
+    /** True once the product has ever been published; never lowered, never taken from form input. */
+    wasPublished: z.boolean(),
     sortOrder: z.number().int(),
     createdAt: z.string().min(1),
     updatedAt: z.string().min(1),

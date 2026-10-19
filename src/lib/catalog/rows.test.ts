@@ -30,6 +30,7 @@ function fullProduct(): Product {
     soldOut: [{ color: "black", size: "S" }],
     sizeChart: { key: "tee-size-chart", width: 800, height: 600 },
     published: false,
+    wasPublished: true,
     sortOrder: -3,
     createdAt: "2026-10-19T10:00:00.000Z",
     updatedAt: "2026-10-19T11:30:00.000Z",
@@ -58,6 +59,17 @@ describe("product rows", () => {
     expect(productToRow({ ...fullProduct(), published: true }).published).toBe(1);
     expect(productToRow({ ...fullProduct(), published: false }).published).toBe(0);
     expect(rowToProduct({ ...productToRow(fullProduct()), published: 1 }).published).toBe(true);
+  });
+
+  test("was_published is stored as 0/1 and round-trips", () => {
+    expect(productToRow({ ...fullProduct(), wasPublished: true }).was_published).toBe(1);
+    expect(productToRow({ ...fullProduct(), wasPublished: false }).was_published).toBe(0);
+    expect(rowToProduct({ ...productToRow(fullProduct()), was_published: 1 }).wasPublished).toBe(true);
+    expect(rowToProduct({ ...productToRow(fullProduct()), was_published: 0 }).wasPublished).toBe(false);
+    for (const wasPublished of [true, false]) {
+      const p = { ...fullProduct(), wasPublished };
+      expect(rowToProduct(productToRow(p))).toEqual(p);
+    }
   });
 
   test("columns are snake_case with JSON text for nested fields", () => {

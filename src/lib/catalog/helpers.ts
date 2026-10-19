@@ -80,6 +80,12 @@ export function cardPhoto(p: Pick<Product, "colors">): Photo | null {
   return p.colors[0]?.photos[0] ?? null;
 }
 
+/** What a product link shows: the page, the "no longer available" page, or a 404 (never-published drafts stay secret). */
+export function linkState(p: Pick<Product, "published" | "wasPublished">): "live" | "unavailable" | "missing" {
+  if (p.published) return "live";
+  return p.wasPublished ? "unavailable" : "missing";
+}
+
 /** The Arabic or English name, by locale. */
 export function nameIn(item: { nameAr: string; nameEn: string }, locale: Locale): string {
   return locale === "ar" ? item.nameAr : item.nameEn;
