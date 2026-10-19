@@ -16,8 +16,16 @@
       "service": "9k-store",
     },
   ],
-  // D1 (product data), R2 (photos, incremental cache) and the Images binding
-  // are added together with the features that need them.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "9k-store",
+      "database_id": "fc687a80-2cde-46f3-865a-78a051f6cd3b",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // R2 (photos, incremental cache) and the Images binding are still to come,
+  // added together with the features that need them.
   "env": {
     // Deployed from `develop` by Workers Builds. Bindings are not inherited,
     // so every binding added above needs a staging copy here.
@@ -29,12 +37,29 @@
           "service": "9k-store-staging",
         },
       ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "9k-store-staging",
+          "database_id": "324653e8-88de-4a01-a499-a9b463816a79",
+          "migrations_dir": "migrations",
+        },
+      ],
       // Branch Previews (`wrangler preview --env staging`) run under the
       // staging Worker. Bindings are not inherited here either; preview
       // bindings go in this block. WORKER_SELF_REFERENCE is left out because
       // a Preview's service binding resolves to the deployed staging Worker,
       // not to the Preview itself.
-      "previews": {},
+      "previews": {
+        "d1_databases": [
+          {
+            "binding": "DB",
+            "database_name": "9k-store-staging",
+            "database_id": "324653e8-88de-4a01-a499-a9b463816a79",
+            "migrations_dir": "migrations",
+          },
+        ],
+      },
     },
   },
 }
