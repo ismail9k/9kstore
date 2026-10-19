@@ -9,13 +9,20 @@ test("photoSrc", () => {
   expect(photoSrc(p(), 320)).toBe("/photos/k/320.webp");
 });
 
-test("photoSrcSet stops at the first width that covers the master", () => {
+test("photoSrcSet stops at the first width that covers the master, advertised at the master's width", () => {
   expect(photoSrcSet(p(1200, 1200))).toBe(
+    "/photos/k/320.webp 320w, /photos/k/640.webp 640w, /photos/k/960.webp 960w, /photos/k/1280.webp 1200w",
+  );
+  expect(photoSrcSet(p(500, 700))).toBe("/photos/k/320.webp 320w, /photos/k/640.webp 500w");
+  expect(photoSrcSet(p(1280, 1280))).toContain("/photos/k/1280.webp 1280w");
+  expect(photoSrcSet(p(4000, 3000))).toBe(
     "/photos/k/320.webp 320w, /photos/k/640.webp 640w, /photos/k/960.webp 960w, /photos/k/1280.webp 1280w",
   );
-  expect(photoSrcSet(p(500, 700))).toBe("/photos/k/320.webp 320w, /photos/k/640.webp 640w");
   expect(photoSrcSet(p(320, 320))).toBe("/photos/k/320.webp 320w");
-  expect(photoSrcSet(p())).toContain("1280w");
+  expect(photoSrcSet(p(100, 100))).toBe("/photos/k/320.webp 100w");
+  expect(photoSrcSet(p())).toBe(
+    "/photos/k/320.webp 320w, /photos/k/640.webp 640w, /photos/k/960.webp 960w, /photos/k/1280.webp 1280w",
+  );
 });
 
 test("photoOgSrc and photoAspect", () => {

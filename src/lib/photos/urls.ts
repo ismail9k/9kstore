@@ -13,13 +13,17 @@ export function photoSrc(photo: Photo, width: VariantWidth = 640): string {
 
 /**
  * `"/photos/k/320.webp 320w, /photos/k/640.webp 640w, …"`. Widths above the
- * master's own width are skipped (the first one at or above it is kept, since
- * `scale-down` never upscales); with no known width, all four are listed.
+ * master's own width are skipped: the first one at or above it is kept and
+ * advertised at the master's width, since `scale-down` never upscales (a
+ * 1200-wide master ends with `/photos/k/1280.webp 1200w`). Every earlier
+ * width is below the master's, so no descriptor repeats. With no known
+ * width, all four are listed at their own widths.
  */
 export function photoSrcSet(photo: Photo): string {
   const entries: string[] = [];
   for (const width of VARIANT_WIDTHS) {
-    entries.push(`${photoSrc(photo, width)} ${width}w`);
+    const actual = photo.width === undefined ? width : Math.min(width, photo.width);
+    entries.push(`${photoSrc(photo, width)} ${actual}w`);
     if (photo.width !== undefined && width >= photo.width) break;
   }
   return entries.join(", ");

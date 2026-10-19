@@ -278,7 +278,7 @@ from `variants.ts`):
 
 /** `/photos/<key>/<w>.webp` */
 export function photoSrc(photo: Photo, width: VariantWidth = 640): string;
-/** `"/photos/k/320.webp 320w, /photos/k/640.webp 640w, …"`, skipping widths above the master's own width (the last one at or above it is kept). */
+/** `"/photos/k/320.webp 320w, /photos/k/640.webp 640w, …"`, skipping widths above the master's own width (the first one at or above it is kept, advertised at the master's width). */
 export function photoSrcSet(photo: Photo): string;
 /** `/photos/<key>/1280.jpg` — the link-preview image for #7. */
 export function photoOgSrc(photo: Photo): string;
@@ -430,8 +430,8 @@ The README's "First-time setup" step 4 gains the seed command.
 Vitest, next to the code, logic only:
 
 - `src/lib/photos/urls.test.ts`: `photoSrc` default and explicit width;
-  `photoSrcSet` for a 1200-wide photo (320, 640, 960, 1280 descriptors with
-  the last kept), a 500-wide photo (320, 640), a photo without width (all
+  `photoSrcSet` for a 1200-wide photo (320, 640, 960, 1200 descriptors, the
+  last on the 1280 file), a 500-wide photo (320, 500), a photo without width (all
   four); `photoOgSrc`; `photoAspect` null without dimensions.
 - `src/lib/photos/variants.test.ts`: `parseVariant("640.webp")` →
   `{ width: 640, format: "webp" }`, `"1280.jpg"` ok, `"1281.webp"`,
