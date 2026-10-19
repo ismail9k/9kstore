@@ -6,6 +6,9 @@
  */
 import { z } from "zod";
 
+import { MESSAGES } from "@/lib/photos/process";
+import { PHOTO_ID } from "@/lib/photos/variants";
+
 import { normalizeWhatsapp } from "./helpers";
 
 const URL_SAFE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -21,7 +24,7 @@ const optionalText = (label: string, max: number) =>
   z.string().trim().max(max, `Use at most ${max} characters for ${label}`);
 
 export const photoSchema = z.object({
-  key: z.string().min(1),
+  key: z.string().regex(PHOTO_ID),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
 });
@@ -31,7 +34,7 @@ export const colorSchema = z.object({
   nameAr: requiredText("the Arabic color name", 60),
   nameEn: requiredText("the English color name", 60),
   swatch: z.string().regex(/^#[0-9a-f]{6}$/i, "Pick a color like #1A2B3C"),
-  photos: z.array(photoSchema),
+  photos: z.array(photoSchema).max(20, MESSAGES.perColor),
 });
 
 const sizesSchema = z

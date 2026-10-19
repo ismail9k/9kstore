@@ -21,14 +21,14 @@ function fullProduct(): Product {
         nameEn: "Black",
         swatch: "#0a0a0a",
         photos: [
-          { key: "tee/black-1.jpg", width: 1200, height: 1500 },
-          { key: "tee/black-2.jpg" },
+          { key: "tee-black-1", width: 1200, height: 1500 },
+          { key: "tee-black-2" },
         ],
       },
       { key: "cream", nameAr: "كريمي", nameEn: "Cream", swatch: "#f1ede7", photos: [] },
     ],
     soldOut: [{ color: "black", size: "S" }],
-    sizeChart: { key: "tee/size-chart.png", width: 800, height: 600 },
+    sizeChart: { key: "tee-size-chart", width: 800, height: 600 },
     published: false,
     sortOrder: -3,
     createdAt: "2026-10-19T10:00:00.000Z",
@@ -43,7 +43,7 @@ function fullSettings(): Settings {
     greetingAr: "أهلاً 9k Store، حابب أطلب:",
     greetingEn: "Hi 9k Store, I'd like to order:",
     instagramUrl: "https://instagram.com/9kstore",
-    logo: { key: "brand/logo.png", width: 512, height: 512 },
+    logo: { key: "brand-logo", width: 512, height: 512 },
     updatedAt: "2026-10-19T12:00:00.000Z",
   };
 }
