@@ -9,11 +9,11 @@ import { LANG_COOKIE } from "@/lib/i18n/locales";
 /**
  * The site's router, in two branches.
  *
- * Customers: `localeGate` sends the bare domain and any path without an
- * `/ar` or `/en` prefix to the remembered language (the `9k_lang` cookie,
- * set only by the toggle's `/lang/[lang]` route), else Arabic, keeping the
- * path and query. 307, because the target depends on a cookie. Sets no
- * cookies.
+ * Customers: `localeGate` sends the bare domain to the remembered language
+ * (the `9k_lang` cookie, set only by the toggle's `/lang/[lang]` route), else
+ * Arabic, and any other path without an `/ar` or `/en` prefix to Arabic,
+ * keeping the path and query. 307, because the target of `/` depends on a
+ * cookie. Sets no cookies.
  *
  * Admin: optimistic gate for /admin page loads: sends visitors without a
  * valid cookie to the login page and logged-in owners away from it. Server

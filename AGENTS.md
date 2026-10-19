@@ -86,8 +86,9 @@ The app has two root layouts. Customer pages live under
 `next/root-params`; the layout sets `lang` and `dir` on `<html>`. The admin
 lives under `src/app/(admin)/admin/` with its own LTR English root layout, and
 dnd-kit stays admin-only there. `src/proxy.ts` is the site's router: it
-redirects `/` and unprefixed paths to the language in the `9k_lang` cookie
-(else Arabic) and runs the optimistic admin gate for `/admin`, which pages
+redirects `/` to the language in the `9k_lang` cookie (else Arabic), sends
+other unprefixed paths to Arabic (the remembered choice applies only to the
+bare domain), and runs the optimistic admin gate for `/admin`, which pages
 back with `requireOwner()`; auth lives in `src/lib/auth`, with the
 login-attempt and session-version tables from `migrations/0002_auth.sql`.
 `src/lib/i18n` holds the locales, the message catalog

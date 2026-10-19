@@ -30,8 +30,9 @@ describe("localeGate", () => {
     expect(localeGate("/", "en")).toEqual({ kind: "redirect", pathname: "/en" });
     for (const bad of ["fr", "AR", ""]) expect(localeGate("/", bad)).toEqual({ kind: "redirect", pathname: "/ar" });
   });
-  test("unprefixed paths get the prefix, keeping the path", () => {
-    expect(localeGate("/p/tee", "en")).toEqual({ kind: "redirect", pathname: "/en/p/tee" });
+  test("unprefixed deep paths get the default prefix, keeping the path, whatever is remembered", () => {
+    expect(localeGate("/p/tee", undefined)).toEqual({ kind: "redirect", pathname: "/ar/p/tee" });
+    expect(localeGate("/p/tee", "en")).toEqual({ kind: "redirect", pathname: "/ar/p/tee" });
     expect(localeGate("/fr/p/tee", undefined)).toEqual({ kind: "redirect", pathname: "/ar/fr/p/tee" });
   });
   test("prefixed and reserved paths pass", () => {

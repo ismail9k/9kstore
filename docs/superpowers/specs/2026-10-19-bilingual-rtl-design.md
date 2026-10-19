@@ -162,8 +162,10 @@ Decision order, with the admin branch exactly as it is today:
    - `/ar`, `/ar/...`, `/en`, `/en/...` → `next`.
    - `/lang/...` → `next` (the toggle's route handler).
    - anything else, `/` included → `redirect` to `/<locale><pathname>`,
-     where `<locale>` is the `9k_lang` cookie when it is `ar` or `en`,
-     else `ar`; `/` becomes `/ar` (no trailing slash). The query string is
+     where `<locale>` is, for `/` only, the `9k_lang` cookie when it is
+     `ar` or `en`, else `ar`; every other path gets `ar`, because the
+     remembered choice applies only to bare-domain visits. `/` becomes
+     `/ar` (no trailing slash). The query string is
      kept. Status 307: the target depends on a cookie, so it must not be
      cached as permanent.
 
@@ -470,7 +472,7 @@ Unit tests in Vitest, next to the code, for logic only:
   `withLocale` including `rest === "/"` → `/en` and search appended;
   `toggleHref` encoding example above.
 - `gate.test.ts`: `localeGate`: `/` with no cookie → redirect `/ar`; with
-  `en` → `/en`; with `fr` → `/ar`; `/p/tee` with `en` → `/en/p/tee`;
+  `en` → `/en`; with `fr` → `/ar`; `/p/tee` with `en` → `/ar/p/tee`;
   `/ar/p/tee` → next; `/en` → next; `/lang/en` → next; `/fr/p/tee` →
   redirect `/ar/fr/p/tee`. `switchTarget`: `("en", "/p/tee?color=black")`
   → `/en/p/tee?color=black`; `("en", "/ar/p/tee")` → `/en/p/tee`;
@@ -513,8 +515,10 @@ Each with what it costs if the owner wants otherwise.
 3. **A route handler, not a Server Action, for the toggle.** Works as a
    plain link with no JavaScript, which matters in Instagram's in-app
    browser. Cost: one extra 307 on toggle only.
-4. **Unprefixed deep paths redirect to the remembered or default
-   language** (`/p/tee` → `/ar/p/tee`), not 404. Old links and typed URLs
+4. **Unprefixed deep paths redirect to the default language**
+   (`/p/tee` → `/ar/p/tee`, whatever the cookie holds), not 404. The
+   remembered choice applies only to the bare domain (issue constraint;
+   amended after PR #9's review). Old links and typed URLs
    keep working. Cost: none material.
 5. **Unknown locale prefixes 404 in Arabic** (`/fr/x` → `/ar/fr/x` →
    not-found). Simpler than a second validation step in the proxy, and the

@@ -23,13 +23,15 @@ export type LocaleDecision = { kind: "next" } | { kind: "redirect"; pathname: st
 
 /**
  * The proxy's decision for a customer path: language-prefixed paths and the
- * toggle's `/lang/...` route pass (bare `/lang` does not); anything else, `/` included, is prefixed
- * with the remembered language (the `9k_lang` cookie) when it is valid, else
- * the default. The caller keeps the query string.
+ * toggle's `/lang/...` route pass (bare `/lang` does not). The bare domain
+ * `/` goes to the remembered language (the `9k_lang` cookie) when it is
+ * valid, else the default; any other path is prefixed with the default, since
+ * the remembered choice applies only to bare-domain visits (#6). The caller
+ * keeps the query string.
  */
 export function localeGate(pathname: string, remembered: string | undefined): LocaleDecision {
   if (splitLocale(pathname).locale) return { kind: "next" };
   if (pathname.startsWith("/lang/")) return { kind: "next" };
-  const locale = isLocale(remembered) ? remembered : DEFAULT_LOCALE;
+  const locale = pathname === "/" && isLocale(remembered) ? remembered : DEFAULT_LOCALE;
   return { kind: "redirect", pathname: withLocale(locale, pathname) };
 }
