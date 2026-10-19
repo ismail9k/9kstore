@@ -40,7 +40,6 @@ import { PhotoSlot } from "./photo-slot";
 import type { SaveErrors } from "./save-input";
 
 const HEX = /^#[0-9a-f]{6}$/i;
-const NO_PHOTOS = "No photos yet — photo upload arrives with the next release.";
 
 /** A card per color, reorderable by dragging, and "Add color". */
 export function ColorsEditor({
@@ -48,11 +47,14 @@ export function ColorsEditor({
   soldOut,
   errors,
   dispatch,
+  onPendingChange,
 }: {
   colors: Color[];
   soldOut: Draft["soldOut"];
   errors: SaveErrors;
   dispatch: Dispatch<Action>;
+  /** Reported by each color's photo strip when its uploads start or stop being in flight. */
+  onPendingChange: (pending: boolean) => void;
 }) {
   const dndId = useId();
   const sensors = useSensors(
@@ -79,6 +81,7 @@ export function ColorsEditor({
               hasSoldOut={soldOut.some((s) => s.color === color.key)}
               errors={errors}
               dispatch={dispatch}
+              onPendingChange={onPendingChange}
             />
           ))}
         </SortableContext>
@@ -98,12 +101,14 @@ function ColorCard({
   hasSoldOut,
   errors,
   dispatch,
+  onPendingChange,
 }: {
   color: Color;
   index: number;
   hasSoldOut: boolean;
   errors: SaveErrors;
   dispatch: Dispatch<Action>;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const id = useId();
   const [confirming, setConfirming] = useState(false);
@@ -198,10 +203,12 @@ function ColorCard({
           <span className="text-sm font-medium">Photos</span>
           <PhotoSlot
             photos={color.photos}
-            emptyText={NO_PHOTOS}
             label={`${name} photo`}
+            kind="color"
+            onAdd={(photo) => dispatch({ type: "addPhoto", key: color.key, photo })}
             onRemove={(photoKey) => dispatch({ type: "removePhoto", key: color.key, photoKey })}
             onMove={(from, to) => dispatch({ type: "movePhoto", key: color.key, from, to })}
+            onPendingChange={onPendingChange}
           />
         </div>
 

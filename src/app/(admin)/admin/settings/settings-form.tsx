@@ -16,7 +16,7 @@ import { settingsFormError, settingsToInput } from "./settings-input";
 
 const CHECK_FIELDS = "Couldn't save. Check the marked fields.";
 const WHATSAPP_HELP = "Country code first, no plus or spaces, e.g. 2010xxxxxxxx";
-const NO_LOGO = "No logo yet — upload arrives with the next release.";
+const WAIT_FOR_UPLOADS = "Wait for the photos to finish uploading.";
 
 type TextField = Exclude<keyof SettingsInput, "logo">;
 
@@ -27,6 +27,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   const [values, setValues] = useState<SettingsInput>(() => settingsToInput(initial));
   const [errors, setErrors] = useState<SaveErrors>({});
   const [saving, startSaving] = useTransition();
+  const [uploading, setUploading] = useState(false);
 
   // After a failed save, move focus to the first marked field.
   useEffect(() => {
@@ -52,7 +53,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || uploading) return;
     startSaving(async () => {
       let result;
       try {
@@ -121,9 +122,12 @@ export function SettingsForm({ initial }: { initial: Settings }) {
         <h2 className="text-sm font-medium">Logo</h2>
         <PhotoSlot
           photos={values.logo ? [values.logo] : []}
-          emptyText={NO_LOGO}
           label="Logo"
+          kind="logo"
+          max={1}
+          onAdd={(photo) => setValues((v) => ({ ...v, logo: photo }))}
           onRemove={() => setValues((v) => ({ ...v, logo: null }))}
+          onPendingChange={setUploading}
         />
       </div>
 
@@ -133,7 +137,8 @@ export function SettingsForm({ initial }: { initial: Settings }) {
             {formError}
           </p>
         ) : null}
-        <Button type="submit" disabled={saving}>
+        {uploading ? <p className="text-sm text-muted-foreground">{WAIT_FOR_UPLOADS}</p> : null}
+        <Button type="submit" disabled={saving || uploading}>
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>
