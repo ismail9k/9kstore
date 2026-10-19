@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { photoAspect, photoOgSrc, photoSrc, photoSrcSet } from "./urls";
+import { ogImageSize, photoAspect, photoOgSrc, photoSrc, photoSrcSet } from "./urls";
 
 const p = (w?: number, h?: number) => ({ key: "k", ...(w && { width: w }), ...(h && { height: h }) });
 
@@ -29,4 +29,12 @@ test("photoOgSrc and photoAspect", () => {
   expect(photoOgSrc(p())).toBe("/photos/k/1280.jpg");
   expect(photoAspect(p(1200, 900))).toEqual({ width: 1200, height: 900 });
   expect(photoAspect(p(1200))).toBeNull();
+});
+
+test("ogImageSize scales the master down to 1280 wide, never up, null when unknown", () => {
+  expect(ogImageSize(p(2000, 3000))).toEqual({ width: 1280, height: 1920 });
+  expect(ogImageSize(p(1000, 1000))).toEqual({ width: 1000, height: 1000 });
+  expect(ogImageSize(p(1500, 1000))).toEqual({ width: 1280, height: 853 });
+  expect(ogImageSize(p(1000))).toBeNull();
+  expect(ogImageSize(p())).toBeNull();
 });
