@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { lang } from "next/root-params";
 
-import { getProductBySlug, getSettings, initialColor, nameIn, SLUG } from "@/lib/catalog";
+import { getProductBySlug, getSettings, initialColor, nameIn, SLUG, SLUG_MAX } from "@/lib/catalog";
 import { isLocale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
 import { parseNotice } from "@/lib/order/decide";
@@ -17,7 +17,7 @@ import { ProductView } from "./product-view";
 async function load(slug: string) {
   const locale = await lang();
   if (!isLocale(locale)) notFound();
-  if (slug.length > 80 || !SLUG.test(slug)) notFound();
+  if (slug.length > SLUG_MAX || !SLUG.test(slug)) notFound();
   const product = await getProductBySlug(slug);
   if (!product || !product.published) notFound();
   const settings = await getSettings();

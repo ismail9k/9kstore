@@ -14,6 +14,9 @@ import { normalizeWhatsapp } from "./helpers";
 /** The slug and color-key rule: lowercase letters and digits in hyphen-separated runs. */
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** The longest slug the store accepts; routes reject longer ones before reading D1. */
+export const SLUG_MAX = 80;
+
 const requiredText = (label: string, max: number) =>
   z
     .string()
@@ -65,7 +68,7 @@ const productFields = z.object({
   slug: z
     .string()
     .min(1, "Enter a link name")
-    .max(80, "Use at most 80 characters for the link name")
+    .max(SLUG_MAX, `Use at most ${SLUG_MAX} characters for the link name`)
     .regex(SLUG, "Use lowercase letters, numbers and hyphens only"),
   nameAr: requiredText("the Arabic name", 120),
   nameEn: requiredText("the English name", 120),

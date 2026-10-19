@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { Photo } from "@/components/photo";
 import type { Photo as PhotoData } from "@/lib/catalog/schema";
@@ -30,7 +30,8 @@ export function Gallery({
     setShownKey(firstKey);
     setIndex(0);
   }
-  useEffect(() => {
+  // Before paint, so the old color's scroll position never shows for a frame.
+  useLayoutEffect(() => {
     // `scroll-smooth` is for swipes; the reset jumps.
     strip.current?.scrollTo({ left: 0, behavior: "instant" });
   }, [firstKey]);
