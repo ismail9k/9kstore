@@ -201,6 +201,7 @@ function ColorCard({
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Photos</span>
+          <p className="text-xs text-muted-foreground">Photo 1 is the catalog card. Photo 2 hangs on the home page rail.</p>
           <PhotoSlot
             photos={color.photos}
             label={`${name} photo`}
