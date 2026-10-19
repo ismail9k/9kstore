@@ -330,7 +330,7 @@ Props:
   label: string;                  // "Black photo", "Size chart", "Logo"
   emptyText?: string;             // dropped: the add control is the empty state
   max?: number;                   // 1 for the size chart and the logo; default 20
-  onAdd: (photo: Photo) => void;  // called once per finished upload
+  onAdd: (photo: Photo) => void;  // called once per finished upload, in pick order
   onRemove: (photoKey: string) => void;
   onMove?: (from: number, to: number) => void;  // present for colors only
   kind: "color" | "size-chart" | "logo";       // sent as X-Photo-Kind
@@ -349,14 +349,19 @@ Behavior:
 - Each chosen file becomes an **upload tile** at once: an object-URL
   preview of the file at reduced opacity with a spinner, so the owner sees
   which photo is in flight. At most three uploads run at a time; the rest
-  queue. On success the tile is replaced by a real tile through `onAdd`;
-  the object URL is revoked. On failure the tile shows the server's message
-  (or "Couldn't upload. Check your connection and try again." for a network
-  error) with a "Retry" and a dismiss ×.
+  queue. On success the tile is replaced by a real tile through `onAdd`,
+  in the order the files were picked (photo 1 is the catalog card photo): a
+  finished upload waits, still pending, until every upload picked before it
+  has finished or failed; the object URL is revoked. On failure the tile
+  shows the server's message (or "Couldn't upload. Check your connection
+  and try again." for a network error) with a dismiss ×, and a "Retry" only
+  when trying again could work (a network failure or a 5xx, not a 4xx
+  refusal).
 - When `max` is 1 and a photo exists, the add tile reads "Replace"; the new
   upload replaces the old on success (the old key is simply dropped from
   the draft).
-- When `photos.length + inFlight >= max` the add tile is hidden, and a
+- When `photos.length + inFlight >= max` the add tile is hidden (failed
+  tiles don't count), and a
   drop that would exceed `max` uploads only the first files that fit and
   shows a toast "Up to 20 photos per color."
 - Files with a type outside the three accepted types are refused client-

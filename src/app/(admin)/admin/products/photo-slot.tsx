@@ -24,7 +24,15 @@ import type { Photo } from "@/lib/catalog/schema";
 import { MESSAGES } from "@/lib/photos/process";
 
 import { PhotoTile } from "../photo-tile";
-import { ACCEPT, precheckFile, takeUpTo, uploadPhoto, type PhotoKind } from "../photos/upload";
+import {
+  ACCEPT,
+  precheckFile,
+  takeFinished,
+  takeUpTo,
+  UploadError,
+  uploadPhoto,
+  type PhotoKind,
+} from "../photos/upload";
 
 const TILE = 72;
 const MAX_IN_FLIGHT = 3;
@@ -35,19 +43,26 @@ type Upload = {
   file: File;
   /** Object URL of the file, for the preview; empty when the file was refused before upload. */
   url: string;
-  status: "queued" | "uploading" | "failed";
+  /** `done`: uploaded, waiting for the uploads picked before it to finish. */
+  status: "queued" | "uploading" | "done" | "failed";
+  /** The stored photo, once `done`. */
+  photo?: Photo;
   error?: string;
-  /** False for a file refused client-side: retrying it would fail the same way. */
+  /** False for a file refused client-side or by the server (4xx): retrying it would fail the same way. */
   retryable: boolean;
 };
+
+const inFlight = (u: Upload) => u.status !== "failed";
 
 /**
  * A strip of photo tiles with a remove × on each, then one tile per upload in
  * progress, then an add tile that opens the file picker. The whole strip is
  * a drop target for files. With `onMove` the photo tiles reorder by
- * dragging. At most three uploads run at once; each finished upload is
- * handed to `onAdd`. With `max` 1 the add tile reads "Replace" once a photo
- * is present, and `onAdd` is the replacement.
+ * dragging. At most three uploads run at once; finished uploads are handed
+ * to `onAdd` in the order they were picked (photo 1 is the catalog card
+ * photo), each once every upload picked before it has finished or failed.
+ * With `max` 1 the add tile reads "Replace" once a photo is present, and
+ * `onAdd` is the replacement.
  */
 export function PhotoSlot({
   photos,
@@ -66,11 +81,11 @@ export function PhotoSlot({
   max?: number;
   /** Sent as `X-Photo-Kind`. */
   kind: PhotoKind;
-  /** Called once per finished upload. */
+  /** Called once per finished upload, in the order the files were picked. */
   onAdd: (photo: Photo) => void;
   onRemove: (photoKey: string) => void;
   onMove?: (from: number, to: number) => void;
-  /** Called when uploads start or stop being in flight (queued or uploading). */
+  /** Called when uploads start or stop being in flight (queued, uploading, or done but not yet added). */
   onPendingChange?: (pending: boolean) => void;
 }) {
   const dndId = useId();
@@ -99,7 +114,7 @@ export function PhotoSlot({
     onPendingRef.current = onPendingChange;
   });
 
-  const pending = uploads.some((u) => u.status !== "failed");
+  const pending = uploads.some(inFlight);
   const reported = useRef(false);
   useEffect(() => {
     if (pending === reported.current) return;
@@ -120,11 +135,26 @@ export function PhotoSlot({
     };
   }, []);
 
-  /** Store `list`, starting queued uploads while fewer than three are running. */
+  /**
+   * Hand the leading finished uploads to `onAdd` in pick order and drop them
+   * (`takeFinished`). Called only from `commit`, so only from handlers and
+   * upload callbacks, never from an effect or a state updater.
+   */
+  function deliver(list: Upload[]): Upload[] {
+    const { ready, rest } = takeFinished(list);
+    for (const u of ready) {
+      if (u.url) URL.revokeObjectURL(u.url);
+      onAddRef.current(u.photo!);
+    }
+    return rest;
+  }
+
+  /** Deliver what's ready, store the rest, start queued uploads while fewer than three run. */
   function commit(list: Upload[]) {
-    let running = list.filter((u) => u.status === "uploading").length;
+    const rest = deliver(list);
+    let running = rest.filter((u) => u.status === "uploading").length;
     const toStart: Upload[] = [];
-    const next = list.map((u) => {
+    const next = rest.map((u) => {
       if (u.status !== "queued" || running >= MAX_IN_FLIGHT) return u;
       running += 1;
       const started = { ...u, status: "uploading" as const };
@@ -141,15 +171,16 @@ export function PhotoSlot({
       (photo) => {
         // Dismissed, replaced or unmounted meanwhile: drop the result.
         if (!mounted.current || !listRef.current.some((u) => u.id === upload.id)) return;
-        URL.revokeObjectURL(upload.url);
-        onAddRef.current(photo);
-        commit(listRef.current.filter((u) => u.id !== upload.id));
+        commit(listRef.current.map((u) => (u.id === upload.id ? { ...u, status: "done", photo } : u)));
       },
       (error: unknown) => {
         if (!mounted.current || !listRef.current.some((u) => u.id === upload.id)) return;
         const message = error instanceof Error && error.message ? error.message : MESSAGES.network;
+        const retryable = error instanceof UploadError ? error.retryable : true;
         commit(
-          listRef.current.map((u) => (u.id === upload.id ? { ...u, status: "failed", error: message } : u)),
+          listRef.current.map((u) =>
+            u.id === upload.id ? { ...u, status: "failed", error: message, retryable } : u,
+          ),
         );
       },
     );
@@ -173,12 +204,19 @@ export function PhotoSlot({
     }
     const refused = files.filter((f) => precheckFile(f) !== null);
     const accepted = files.filter((f) => precheckFile(f) === null);
-    const { taken, dropped } = takeUpTo(accepted, max - photos.length - listRef.current.length);
+    // Failed tiles hold no place: they never become photos unless retried.
+    const room = max - photos.length - listRef.current.filter(inFlight).length;
+    const { taken, dropped } = takeUpTo(accepted, room);
     if (dropped > 0) toast.error(`${MESSAGES.perColor}.`);
     commit([...listRef.current, ...refused.map(toUpload), ...taken.map(toUpload)]);
   }
 
   function retry(id: number) {
+    // A failed tile holds no place, so the slot may have filled up since.
+    if (max > 1 && photos.length + listRef.current.filter(inFlight).length >= max) {
+      toast.error(`${MESSAGES.perColor}.`);
+      return;
+    }
     commit(listRef.current.map((u) => (u.id === id ? { ...u, status: "queued", error: undefined } : u)));
   }
 
@@ -216,7 +254,8 @@ export function PhotoSlot({
   }
 
   const addText = max > 1 ? "Add photos" : photos.length > 0 ? "Replace" : "Add image";
-  const showAdd = max === 1 ? uploads.length === 0 : photos.length + uploads.length < max;
+  const active = uploads.filter(inFlight).length;
+  const showAdd = max === 1 ? active === 0 : photos.length + active < max;
 
   const strip = (
     <div
@@ -336,7 +375,11 @@ function SortableTile(props: TileProps) {
   );
 }
 
-/** An upload in progress (dimmed preview and a spinner) or a failed one (its message, Retry, ×). */
+/**
+ * An upload in progress or finished and waiting for earlier ones (dimmed
+ * preview and a spinner), or a failed one (its message, Retry when trying
+ * again could work, ×).
+ */
 function UploadTile({
   upload,
   label,

@@ -1,6 +1,7 @@
 /**
  * The admin's side of `POST /admin/photos`: the client-side precheck, one
- * upload, and how many files of a drop fit. Client-safe and React-free.
+ * upload, how many files of a drop fit, and which finished uploads are
+ * ready to add. Client-safe and React-free.
  */
 import type { Photo } from "@/lib/catalog/schema";
 import { MESSAGES } from "@/lib/photos/process";
@@ -23,27 +24,44 @@ function isPositiveInt(value: unknown): value is number {
 }
 
 /**
+ * Why an upload failed, and whether trying the same file again could work:
+ * a 4xx refusal (too large, wrong type, logged out, refused origin) would
+ * fail the same way; a network failure, an answer that isn't the route's
+ * JSON, or a 5xx such as 503 might not.
+ */
+export class UploadError extends Error {
+  readonly retryable: boolean;
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.name = "UploadError";
+    this.retryable = retryable;
+  }
+}
+
+/**
  * Upload one file as the raw body. Resolves to the stored photo; rejects with
- * the server's message, or the network message when the request fails or the
- * answer isn't the route's JSON.
+ * an `UploadError` carrying the server's message, or the network message when
+ * the request fails or the answer isn't the route's JSON.
  */
 export async function uploadPhoto(file: File, kind: PhotoKind, fetchImpl: typeof fetch = fetch): Promise<Photo> {
   let body: unknown;
-  let ok: boolean;
+  let status: number;
   try {
     const response = await fetchImpl("/admin/photos", {
       method: "POST",
       body: file,
       headers: { "Content-Type": file.type, "X-Photo-Kind": kind },
     });
-    ok = response.ok;
+    status = response.status;
     body = await response.json();
   } catch {
-    throw new Error(MESSAGES.network);
+    throw new UploadError(MESSAGES.network, true);
   }
   const record = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+  const ok = status >= 200 && status < 300;
   if (!ok || typeof record.key !== "string") {
-    throw new Error(typeof record.error === "string" && record.error ? record.error : MESSAGES.network);
+    const message = typeof record.error === "string" && record.error ? record.error : MESSAGES.network;
+    throw new UploadError(message, !(status >= 400 && status < 500));
   }
   const photo: Photo = { key: record.key };
   if (isPositiveInt(record.width)) photo.width = record.width;
@@ -55,4 +73,22 @@ export async function uploadPhoto(file: File, kind: PhotoKind, fetchImpl: typeof
 export function takeUpTo<T>(items: T[], room: number): { taken: T[]; dropped: number } {
   const taken = items.slice(0, Math.max(0, room));
   return { taken, dropped: items.length - taken.length };
+}
+
+/**
+ * The finished (`done`) uploads that can be added now, in list order, and
+ * the rest: every `done` entry before the first `queued` or `uploading` one,
+ * so photos land in the order they were picked. `failed` entries don't hold
+ * later ones back and stay in `rest`.
+ */
+export function takeFinished<T extends { status: "queued" | "uploading" | "done" | "failed" }>(
+  list: T[],
+): { ready: T[]; rest: T[] } {
+  const ready: T[] = [];
+  for (const item of list) {
+    if (item.status === "queued" || item.status === "uploading") break;
+    if (item.status === "done") ready.push(item);
+  }
+  if (ready.length === 0) return { ready, rest: list };
+  return { ready, rest: list.filter((item) => !ready.includes(item)) };
 }
