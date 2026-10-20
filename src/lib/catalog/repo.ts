@@ -14,7 +14,7 @@ import "server-only";
 import { getDb } from "@/lib/db";
 
 import { nextSortOrder, uniqueSlug } from "./helpers";
-import { productToRow, rowToProduct, rowToSettings, type ProductRow, type SettingsRow } from "./rows";
+import { parseProductRows, productToRow, rowToProduct, rowToSettings, type ProductRow, type SettingsRow } from "./rows";
 import {
   productInputSchema,
   settingsInputSchema,
@@ -92,13 +92,22 @@ async function resolveSlug(db: D1Database, slug: string, opts: SaveOptions, excl
   }
 }
 
+/**
+ * Products in catalog order. A row that fails to parse is skipped and logged
+ * with its id, so one bad row cannot blank the catalog or the admin list;
+ * `getProduct`/`getProductBySlug` still throw on a corrupt row.
+ */
 export async function listProducts(opts?: { publishedOnly?: boolean }): Promise<Product[]> {
   const db = await getDb();
   const where = opts?.publishedOnly ? "WHERE published = 1 " : "";
   const { results } = await db
     .prepare(`SELECT * FROM products ${where}ORDER BY sort_order ASC, created_at DESC`)
     .all<ProductRow>();
-  return results.map(rowToProduct);
+  const { products, rejected } = parseProductRows(results);
+  for (const { id, reason } of rejected) {
+    console.error(`catalog: skipping product ${id}: ${reason}`);
+  }
+  return products;
 }
 
 export async function getProduct(id: string): Promise<Product | null> {

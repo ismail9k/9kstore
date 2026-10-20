@@ -7,6 +7,9 @@ export const en = {
   notFound: { title: "Page not found",
               body: "This page doesn't exist or has moved.",
               back: "Back to the catalog" },
+  home: { eyebrow: "New drop", headlineTop: "Made for", headlineAccent: "every day.",
+          viewProduct: "View product", empty: "Nothing here yet — follow us on Instagram." },
+  footer: { instagram: "Instagram", whatsapp: "WhatsApp" },
 } as const;
 
 /** The catalog's shape with every leaf widened to `string`, so `ar` must have the same keys but its own wording. */

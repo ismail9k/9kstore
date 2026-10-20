@@ -27,6 +27,8 @@ export const photoSchema = z.object({
   key: z.string().regex(PHOTO_ID),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+  /** The hook's top as a fraction of the height (first visible row), measured in the admin at upload. */
+  hookTop: z.number().min(0).max(1).optional(),
 });
 
 export const colorSchema = z.object({

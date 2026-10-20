@@ -1,8 +1,9 @@
 /**
  * Pure mapping between D1 rows (snake_case columns, JSON text for nested
  * fields, 0/1 for booleans) and the catalog objects. Reads are validated with
- * the zod schemas, so a corrupt row throws a clear error early instead of
- * reaching a page half-broken.
+ * the zod schemas: a corrupt row throws a clear error from `rowToProduct`
+ * instead of reaching a page half-broken, and `parseProductRows` collects
+ * such failures for list reads so one bad row cannot fail the whole list.
  */
 import { productSchema, settingsSchema, type Product, type Settings } from "./schema";
 
@@ -65,6 +66,23 @@ export function rowToProduct(row: ProductRow): Product {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
+}
+
+/** Parses each row, keeping the good ones and naming each one that fails, with why. */
+export function parseProductRows(rows: ProductRow[]): {
+  products: Product[];
+  rejected: { id: string; reason: string }[];
+} {
+  const products: Product[] = [];
+  const rejected: { id: string; reason: string }[] = [];
+  for (const row of rows) {
+    try {
+      products.push(rowToProduct(row));
+    } catch (err) {
+      rejected.push({ id: row.id, reason: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { products, rejected };
 }
 
 export function productToRow(p: Product): ProductRow {

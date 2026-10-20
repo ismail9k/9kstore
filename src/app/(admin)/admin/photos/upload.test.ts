@@ -61,6 +61,34 @@ describe("uploadPhoto", () => {
   });
 });
 
+describe("uploadPhoto hook measurement", () => {
+  const ok = (async () => Response.json({ key: "k", width: 1200, height: 1200 })) as typeof fetch;
+  const file = new File([new Uint8Array(3)], "a.webp", { type: "image/webp" });
+
+  test("adds the measured hookTop to a color photo", async () => {
+    const measured: Blob[] = [];
+    const measure = async (f: Blob) => (measured.push(f), 0.1234);
+    await expect(uploadPhoto(file, "color", ok, measure)).resolves.toEqual({ key: "k", width: 1200, height: 1200, hookTop: 0.1234 });
+    expect(measured).toEqual([file]);
+  });
+
+  test("leaves hookTop out when it can't be measured, without failing the upload", async () => {
+    await expect(uploadPhoto(file, "color", ok, async () => undefined)).resolves.toEqual({ key: "k", width: 1200, height: 1200 });
+    const broken = async () => {
+      throw new Error("decode failed");
+    };
+    await expect(uploadPhoto(file, "color", ok, broken)).resolves.toEqual({ key: "k", width: 1200, height: 1200 });
+  });
+
+  test("doesn't measure a logo or a size chart, which never hang", async () => {
+    let calls = 0;
+    const measure = async () => (calls++, 0.5);
+    await expect(uploadPhoto(file, "logo", ok, measure)).resolves.toEqual({ key: "k", width: 1200, height: 1200 });
+    await uploadPhoto(file, "size-chart", ok, measure);
+    expect(calls).toBe(0);
+  });
+});
+
 describe("uploadPhoto retryable", () => {
   const file = new File([""], "a", { type: "image/jpeg" });
   async function failure(fetchImpl: typeof fetch, kind: PhotoKind = "color"): Promise<UploadError> {

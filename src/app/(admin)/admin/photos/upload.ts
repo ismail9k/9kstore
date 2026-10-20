@@ -7,6 +7,8 @@ import type { Photo } from "@/lib/catalog/schema";
 import { MESSAGES } from "@/lib/photos/process";
 import { ACCEPTED_TYPES, INPUT_MAX_BYTES } from "@/lib/photos/variants";
 
+import { measureHookTop } from "./hook";
+
 export type PhotoKind = "color" | "size-chart" | "logo";
 
 /** The accept list for the file picker. */
@@ -42,8 +44,19 @@ export class UploadError extends Error {
  * Upload one file as the raw body. Resolves to the stored photo; rejects with
  * an `UploadError` carrying the server's message, or the network message when
  * the request fails or the answer isn't the route's JSON.
+ *
+ * A color photo (the one that may hang on the rail) is also measured here, in
+ * the browser, while it uploads: its `hookTop` is merged into the photo. A
+ * failed measurement leaves `hookTop` out and never fails the upload.
  */
-export async function uploadPhoto(file: File, kind: PhotoKind, fetchImpl: typeof fetch = fetch): Promise<Photo> {
+export async function uploadPhoto(
+  file: File,
+  kind: PhotoKind,
+  fetchImpl: typeof fetch = fetch,
+  measure: (file: Blob) => Promise<number | undefined> = measureHookTop,
+): Promise<Photo> {
+  const hookTop: Promise<number | undefined> =
+    kind === "color" ? measure(file).catch(() => undefined) : Promise.resolve(undefined);
   let body: unknown;
   let status: number;
   try {
@@ -66,6 +79,8 @@ export async function uploadPhoto(file: File, kind: PhotoKind, fetchImpl: typeof
   const photo: Photo = { key: record.key };
   if (isPositiveInt(record.width)) photo.width = record.width;
   if (isPositiveInt(record.height)) photo.height = record.height;
+  const measured = await hookTop;
+  if (measured !== undefined) photo.hookTop = measured;
   return photo;
 }
 
