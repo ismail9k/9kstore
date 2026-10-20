@@ -6,6 +6,9 @@ import { COOKIE_NAME, isValidSessionToken } from "@/lib/auth/session";
 import { localeGate } from "@/lib/i18n/gate";
 import { LANG_COOKIE } from "@/lib/i18n/locales";
 
+/** For redirects that depend on the visitor's cookies. */
+const NO_STORE = "private, no-store";
+
 /**
  * The site's router, in two branches.
  *
@@ -15,11 +18,19 @@ import { LANG_COOKIE } from "@/lib/i18n/locales";
  * keeping the path and query. 307, because the target of `/` depends on a
  * cookie. Sets no cookies.
  *
+ * Workers Cache is on, so every redirect here carries `NO_STORE`: the bare
+ * domain's and the admin gate's depend on a cookie (the language or the
+ * session) and must never be served to someone else from the cache; the
+ * unprefixed-path ones carry it too, so no redirect of this router is cached.
+ *
  * Admin: optimistic gate for /admin page loads: sends visitors without a
  * valid cookie to the login page and logged-in owners away from it. Server
  * Action POSTs pass through, so a save with an ended session gets the
  * action's own "logged out" answer instead of a redirect. Pages and Server
  * Actions still check the session; this is not the security boundary.
+ *
+ * Photo files under `/photos/` are served by their own route and skip the
+ * router.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -37,9 +48,11 @@ export async function proxy(request: NextRequest) {
     switch (adminGate(method, request.nextUrl.pathname, loggedIn)) {
       case "login":
         response = NextResponse.redirect(new URL(LOGIN_PATH, request.url));
+        response.headers.set("Cache-Control", NO_STORE);
         break;
       case "admin":
         response = NextResponse.redirect(new URL("/admin", request.url));
+        response.headers.set("Cache-Control", NO_STORE);
         break;
       case "next":
         response = NextResponse.next();
@@ -53,11 +66,13 @@ export async function proxy(request: NextRequest) {
   if (decision.kind === "redirect") {
     const url = request.nextUrl.clone();
     url.pathname = decision.pathname; // search is preserved on the clone
-    return NextResponse.redirect(url, 307);
+    const response = NextResponse.redirect(url, 307);
+    response.headers.set("Cache-Control", NO_STORE);
+    return response;
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next|photos|.*\\..*).*)"],
+  matcher: ["/((?!_next|photos/|.*\\..*).*)"],
 };

@@ -35,6 +35,7 @@ Arabic. Other unprefixed paths always redirect to Arabic. The font (IBM Plex San
 | `pnpm db:migrate:staging` | Apply the D1 migrations to the staging database (`9k-store-staging`) |
 | `pnpm db:migrate:prod` | Apply the D1 migrations to the production database (`9k-store`) |
 | `pnpm db:seed:local` | Load a sample product (`migrations/seed/dev.sql`) into the local database; local only |
+| `pnpm photos:seed:local` | Load the sample product's photos into the local photos bucket; local only |
 
 Local Worker variables live in `.dev.vars` (git-ignored); copy
 `.dev.vars.example` to create it.
@@ -50,11 +51,19 @@ D1. Do these steps in order:
    `pnpm exec wrangler d1 create 9k-store-staging`, then paste each
    `database_id` into `wrangler.jsonc` (the staging id goes in both
    `env.staging` and `env.staging.previews`).
-2. **Apply the migrations.** `pnpm db:migrate:staging` (already done for
+2. **Create the photo buckets.** Already done for this repo. For a new
+   Cloudflare account, run
+   ```sh
+   pnpm exec wrangler r2 bucket create 9k-store-photos
+   pnpm exec wrangler r2 bucket create 9k-store-photos-staging
+   ```
+   `wrangler.jsonc` names both buckets, and a deploy fails while the bucket
+   it names doesn't exist.
+3. **Apply the migrations.** `pnpm db:migrate:staging` (already done for
    this repo's staging database). Before the first production release, run
    `pnpm db:migrate:prod`; the production database exists but has no tables
    yet.
-3. **Set the secrets** on the staging Worker:
+4. **Set the secrets** on the staging Worker:
    ```sh
    pnpm exec wrangler secret put ADMIN_PASSWORD --env staging
    pnpm exec wrangler secret put SESSION_SECRET --env staging
@@ -65,19 +74,25 @@ D1. Do these steps in order:
    must be at least 32 characters. Branch previews use the staging Worker's
    secrets. Changing `ADMIN_PASSWORD` signs out every session, and logging
    out signs out every device.
-4. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
+5. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
    both secrets. The example values are deliberately too short and must be
    replaced (password at least 12 characters, secret at least 32), or the
    admin shows "not set up". Then:
    ```sh
    pnpm db:migrate:local
    pnpm db:seed:local   # optional: one sample product
+   pnpm photos:seed:local   # optional: its photos
    pnpm dev
    ```
    and open http://localhost:3000/admin.
 
 Remote migrations are run by hand on each schema change: Workers Builds does
 not apply them.
+
+Photos are processed on upload by Cloudflare Images; the binding needs no
+resource. If the first upload on staging answers "Photo processing isn't
+available right now" and the Worker log shows an Images permission error,
+enable Images (Transformations) for the account in the Cloudflare dashboard.
 
 ### Owner follow-up: rate-limit the login
 

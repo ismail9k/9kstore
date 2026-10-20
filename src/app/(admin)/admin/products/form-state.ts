@@ -50,11 +50,13 @@ export type Action =
   | { type: "removeColor"; key: string }
   | { type: "moveColor"; from: number; to: number }
   | { type: "colorField"; key: string; name: "nameAr" | "nameEn" | "swatch"; value: string }
+  | { type: "addPhoto"; key: string; photo: Photo }
   | { type: "removePhoto"; key: string; photoKey: string }
   | { type: "movePhoto"; key: string; from: number; to: number }
   | { type: "setStock"; color: string; size: string; inStock: boolean }
   | { type: "setColorStock"; color: string; inStock: boolean }
   | { type: "setSizeStock"; size: string; inStock: boolean }
+  | { type: "setSizeChart"; photo: Photo }
   | { type: "removeSizeChart" };
 
 function isNewKey(key: string): boolean {
@@ -193,6 +195,10 @@ export function reduce(draft: Draft, action: Action): Draft {
       return { ...draft, colors: move(draft.colors, action.from, action.to) };
     case "colorField":
       return updateColor(draft, action.key, (c) => ({ ...c, [action.name]: action.value }));
+    case "addPhoto":
+      return updateColor(draft, action.key, (c) =>
+        c.photos.some((p) => p.key === action.photo.key) ? c : { ...c, photos: [...c.photos, action.photo] },
+      );
     case "removePhoto":
       return updateColor(draft, action.key, (c) => ({
         ...c,
@@ -214,6 +220,8 @@ export function reduce(draft: Draft, action: Action): Draft {
         draft.colors.map((c) => ({ color: c.key, size: action.size })),
         action.inStock,
       );
+    case "setSizeChart":
+      return { ...draft, sizeChart: action.photo };
     case "removeSizeChart":
       return { ...draft, sizeChart: null };
   }

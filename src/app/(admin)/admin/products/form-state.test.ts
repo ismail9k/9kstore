@@ -339,3 +339,14 @@ describe("autoSlug", () => {
     expect(autoSlug("تيشيرت")).toBe("");
   });
 });
+
+test("addPhoto appends to the named color and ignores a duplicate key", () => {
+  let d = reduce(emptyDraft(), { type: "addPhoto", key: "new:1", photo: { key: "p1", width: 10, height: 10 } });
+  d = reduce(d, { type: "addPhoto", key: "new:1", photo: { key: "p2" } });
+  d = reduce(d, { type: "addPhoto", key: "new:1", photo: { key: "p1" } });
+  expect(d.colors[0]?.photos.map((p) => p.key)).toEqual(["p1", "p2"]);
+});
+test("setSizeChart replaces", () => {
+  const d = reduce({ ...emptyDraft(), sizeChart: { key: "old" } }, { type: "setSizeChart", photo: { key: "new" } });
+  expect(d.sizeChart).toEqual({ key: "new" });
+});

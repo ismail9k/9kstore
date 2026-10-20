@@ -1,5 +1,6 @@
 import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
-// No incremental cache yet; add the R2 cache once the bucket exists.
-// See https://opennext.js.org/cloudflare/caching
+// The incremental cache is not configured: nothing is statically generated.
+// The `PHOTOS` R2 bucket holds product photos and is not the OpenNext cache
+// bucket. See https://opennext.js.org/cloudflare/caching
 export default defineCloudflareConfig({});

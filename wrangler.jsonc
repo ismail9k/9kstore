@@ -24,8 +24,10 @@
       "migrations_dir": "migrations",
     },
   ],
-  // R2 (photos, incremental cache) and the Images binding are still to come,
-  // added together with the features that need them.
+  // The product photos bucket and the Images processor are bound here; `cache` is Workers Cache for the photo variants (pages opt out through Next's own `Cache-Control`).
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos" }],
+  "images": { "binding": "IMAGES" },
+  "cache": { "enabled": true, "cross_version_cache": true },
   "env": {
     // Deployed from `develop` by Workers Builds. Bindings are not inherited,
     // so every binding added above needs a staging copy here.
@@ -45,6 +47,9 @@
           "migrations_dir": "migrations",
         },
       ],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos-staging" }],
+      "images": { "binding": "IMAGES" },
+      "cache": { "enabled": true, "cross_version_cache": true },
       // Branch Previews (`wrangler preview --env staging`) run under the
       // staging Worker. Bindings are not inherited here either; preview
       // bindings go in this block. WORKER_SELF_REFERENCE is left out because
@@ -59,6 +64,9 @@
             "migrations_dir": "migrations",
           },
         ],
+        "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos-staging" }],
+        "images": { "binding": "IMAGES" },
+        "cache": { "enabled": true, "cross_version_cache": true },
       },
     },
   },

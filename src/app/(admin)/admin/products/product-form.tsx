@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -33,8 +34,8 @@ import { SizesEditor } from "./sizes-editor";
 
 const LEAVE_CONFIRM = "Leave this page? Your unsaved changes will be lost.";
 const CHECK_FIELDS = "Couldn't save. Check the marked fields.";
+const WAIT_FOR_UPLOADS = "Wait for the photos to finish uploading.";
 const SLUG_HELP = "Part of the product's link. Changing it after sharing breaks old links.";
-const NO_SIZE_CHART = "No size chart — upload arrives with the next release.";
 const VISIBILITY_HELP =
   "Hidden products don't appear on the site, but their links show a 'no longer available' page.";
 
@@ -97,11 +98,19 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
   const [slugLocked, setSlugLocked] = useState(published);
   const [saved, setSaved] = useState(false);
   const [saving, startSaving] = useTransition();
+  // How many photo strips have uploads in flight; Save waits for them.
+  const [pendingUploads, setPendingUploads] = useState(0);
+  const onPendingChange = useCallback(
+    (pending: boolean) => setPendingUploads((n) => Math.max(0, n + (pending ? 1 : -1))),
+    [],
+  );
+  const uploading = pendingUploads > 0;
 
-  const dirty = useMemo(
+  const edited = useMemo(
     () => !saved && (priceText !== initialPrice || JSON.stringify(draft) !== initialJson),
     [saved, priceText, initialPrice, draft, initialJson],
   );
+  const dirty = edited || uploading;
   useUnsavedGuard(dirty);
 
   // After a failed save, move focus to the first marked field.
@@ -138,7 +147,7 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || uploading) return;
     startSaving(async () => {
       let result;
       try {
@@ -290,7 +299,13 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
       <Separator />
 
       <Section title="Colors">
-        <ColorsEditor colors={draft.colors} soldOut={draft.soldOut} errors={errors} dispatch={dispatch} />
+        <ColorsEditor
+          colors={draft.colors}
+          soldOut={draft.soldOut}
+          errors={errors}
+          dispatch={dispatch}
+          onPendingChange={onPendingChange}
+        />
         <FieldError id={`${uid}-colors-error`} message={errors.colors} />
       </Section>
 
@@ -314,9 +329,12 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
       <Section title="Size chart">
         <PhotoSlot
           photos={draft.sizeChart ? [draft.sizeChart] : []}
-          emptyText={NO_SIZE_CHART}
           label="Size chart"
+          kind="size-chart"
+          max={1}
+          onAdd={(photo) => dispatch({ type: "setSizeChart", photo })}
           onRemove={() => dispatch({ type: "removeSizeChart" })}
+          onPendingChange={onPendingChange}
         />
       </Section>
 
@@ -346,10 +364,11 @@ export function ProductForm({ id, initial, published }: { id: string | null; ini
             {formError}
           </p>
         ) : null}
+        {uploading ? <p className="text-sm text-muted-foreground">{WAIT_FOR_UPLOADS}</p> : null}
         <Button asChild variant="outline">
           <Link href="/admin">Cancel</Link>
         </Button>
-        <Button type="submit" disabled={saving}>
+        <Button type="submit" disabled={saving || uploading}>
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>

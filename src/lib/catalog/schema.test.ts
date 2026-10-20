@@ -20,7 +20,7 @@ function validProduct(): ProductInput {
     code: "TEE-01",
     sizes: ["S", "M", "L"],
     colors: [
-      { key: "black", nameAr: "أسود", nameEn: "Black", swatch: "#0a0a0a", photos: [{ key: "tee/black-1.jpg", width: 1200, height: 1500 }] },
+      { key: "black", nameAr: "أسود", nameEn: "Black", swatch: "#0a0a0a", photos: [{ key: "tee-black-1", width: 1200, height: 1500 }] },
       { key: "cream", nameAr: "كريمي", nameEn: "Cream", swatch: "#f1ede7", photos: [] },
     ],
     soldOut: [{ color: "black", size: "S" }],
@@ -143,6 +143,26 @@ describe("productInputSchema", () => {
     expect(productInputSchema.safeParse({ ...validProduct(), nameAr: "x".repeat(121) }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...validProduct(), descriptionEn: "" }).success).toBe(true);
     expect(productInputSchema.safeParse({ ...validProduct(), descriptionAr: "x".repeat(1001) }).success).toBe(false);
+  });
+
+  test("allows at most 20 photos per color", () => {
+    const p = validProduct();
+    const photos = Array.from({ length: 21 }, (_, i) => ({ key: `photo-${i}` }));
+    const tooMany = productInputSchema.safeParse({ ...p, colors: p.colors.map((c, i) => (i === 0 ? { ...c, photos } : c)) });
+    expect(tooMany.success).toBe(false);
+    expect(messagesAt(tooMany, ["colors", 0, "photos"])).toEqual(["Up to 20 photos per color"]);
+    const twenty = photos.slice(0, 20);
+    expect(productInputSchema.safeParse({ ...p, colors: p.colors.map((c, i) => (i === 0 ? { ...c, photos: twenty } : c)) }).success).toBe(true);
+  });
+
+  test("a photo key is lowercase letters, numbers and hyphens", () => {
+    const withKey = (key: string) => {
+      const p = validProduct();
+      return productInputSchema.safeParse({ ...p, colors: p.colors.map((c, i) => (i === 0 ? { ...c, photos: [{ key }] } : c)) });
+    };
+    expect(withKey("a/b").success).toBe(false);
+    expect(withKey("seed-tee-black-flat").success).toBe(true);
+    expect(withKey("0123456789abcdef0123456789abcdef").success).toBe(true);
   });
 
   test("owner-facing messages never use technical words", () => {
