@@ -51,7 +51,7 @@
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-plex, system-ui), sans-serif;
 }
 
 :root {
