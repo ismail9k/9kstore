@@ -95,7 +95,9 @@ login-attempt and session-version tables from `migrations/0002_auth.sql`.
 `src/lib/i18n` holds the locales, the message catalog
 (`src/lib/i18n/messages/*.ts`), `formatPrice`/`isolateLtr` and the gates
 (`localeGate`, `switchTarget`). The header's language toggle goes through the
-route `/lang/[lang]`, which sets the cookie and redirects back.
+route `/lang/[lang]`, which sets the cookie and redirects back. Product pages
+live at `src/app/(store)/[lang]/p/[slug]/`, and the order button is a
+redirecting `GET …/order` route built on `src/lib/order`.
 
 Photos live in R2 (`PHOTOS`) as `photos/<id>/master` plus the variants
 listed in `src/lib/photos/variants.ts`. `POST /admin/photos` processes each
@@ -133,7 +135,8 @@ The brief's suggested target, which the config is set up for:
 - **The order message must match the page.** The price in the WhatsApp message
   must equal the price shown. Stock is checked again when the order button is
   tapped, and a sold-out size never opens WhatsApp. The button must work in
-  Instagram's in-app browser.
+  Instagram's in-app browser: the tap is a plain link to the order route,
+  never `window.open`.
 - **Arabic is first-class, not mirrored English.** Use RTL layout, keep prices,
   sizes and codes readable inside RTL text, use Western digits (0–9) in both
   languages, and give every customer-facing string an Arabic version.

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Photo } from "@/components/photo";
 import { Price } from "@/components/price";
 import { Badge } from "@/components/ui/badge";
-import { cardPhoto, isSoldOut, nameIn, type Product } from "@/lib/catalog";
+import { cardPhoto, isSoldOut, nameIn } from "@/lib/catalog/helpers";
+import type { Product } from "@/lib/catalog/schema";
 import { withLocale, type Locale } from "@/lib/i18n/locales";
 
 /** The brand's sold-out mark: near-black on off-white, never red. */

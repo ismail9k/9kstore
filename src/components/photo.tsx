@@ -12,7 +12,7 @@ import { photoAspect, photoSrc, photoSrcSet } from "@/lib/photos/urls";
  *   all lazy (they sit below the hero);
  * - the home page rail's tees (#4): `"(min-width: 1024px) 224px, (min-width: 640px) 30vw, 46vw"`,
  *   with `priority` (they are the above-the-fold photos);
- * - the product gallery (#5): `"100vw"`.
+ * - the product gallery (#5): `"(min-width: 768px) 50vw, 100vw"`.
  *
  * `priority` is for photos above the fold: eager, `fetchpriority="high"`.
  * The link-preview image (`og:image`, #7) is not this component: use

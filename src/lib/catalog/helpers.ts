@@ -6,7 +6,7 @@ import type { Locale } from "@/lib/i18n/locales";
 
 import type { Color, Photo, Product } from "./schema";
 
-type StockFields = Pick<Product, "sizes" | "colors" | "soldOut">;
+export type StockFields = Pick<Product, "sizes" | "colors" | "soldOut">;
 
 /**
  * Lowercase ASCII letters and digits joined by single hyphens.
@@ -46,6 +46,33 @@ export function isInStock(p: StockFields, colorKey: string, size: string): boole
 /** True when every color × size pair is sold out, or there is nothing to buy. */
 export function isSoldOut(p: StockFields): boolean {
   return !p.colors.some((c) => p.sizes.some((size) => isInStock(p, c.key, size)));
+}
+
+/** Every size in order with its stock for one color. */
+export function sizeAvailability(p: StockFields, colorKey: string): { size: string; inStock: boolean }[] {
+  return p.sizes.map((size) => ({ size, inStock: isInStock(p, colorKey, size) }));
+}
+
+/** True when no size of this color is in stock (also for an unknown color). */
+export function isColorSoldOut(p: StockFields, colorKey: string): boolean {
+  return sizeAvailability(p, colorKey).every((s) => !s.inStock);
+}
+
+/** The color with this key, or null. */
+export function colorByKey(p: Pick<Product, "colors">, key: string): Color | null {
+  return p.colors.find((c) => c.key === key) ?? null;
+}
+
+/**
+ * The color `?color=` names when it exists, else the first color. An array
+ * (`?color=a&color=b`) counts as unknown. The schema guarantees a first color.
+ */
+export function initialColor(p: Pick<Product, "colors">, key: string | string[] | undefined): Color {
+  const named = typeof key === "string" ? colorByKey(p, key) : null;
+  if (named) return named;
+  const first = p.colors[0];
+  if (first === undefined) throw new Error("A product has no colors");
+  return first;
 }
 
 /** The first photo of the first color, the catalog card photo. */
