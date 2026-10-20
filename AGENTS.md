@@ -38,6 +38,9 @@ Node 24+ and pnpm 11 (`packageManager` pins the version).
 - Run the Worker locally in workerd: `pnpm preview` (http://localhost:8787)
 - After editing `wrangler.jsonc`: `pnpm cf-typegen` to regenerate
   `cloudflare-env.d.ts`
+- D1: `pnpm db:migrate:local`, `pnpm db:seed:local` (sample product, local
+  only); remote: `pnpm db:migrate:staging`, `pnpm db:migrate:prod`, run by
+  hand on each schema change. Setup steps: README "First-time setup".
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, test and the Worker
 build on PRs into `main` and `develop`, and never deploys. The pre-commit hook
@@ -73,9 +76,12 @@ to the code as `*.test.ts(x)`.
 
 ## Architecture
 
-The app is a scaffold so far: Next.js 16 App Router under `src/app`, deployed
-to Cloudflare Workers through OpenNext (`@opennextjs/cloudflare`). Import from
-`src` with the `@/` alias.
+Next.js 16 App Router under `src/app`, deployed to Cloudflare Workers through
+OpenNext (`@opennextjs/cloudflare`). Import from `src` with the `@/` alias.
+Product and settings data live in D1 behind `src/lib/catalog` (server-only;
+never cache its reads). The admin is at `/admin` behind `src/proxy.ts` +
+`requireOwner()`; auth lives in `src/lib/auth`, with the login-attempt and
+session-version tables from `migrations/0002_auth.sql`.
 
 The brief's suggested target, which the config is set up for:
 
