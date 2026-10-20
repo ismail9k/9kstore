@@ -59,8 +59,9 @@ D1. Do these steps in order:
    ```
    `wrangler.jsonc` names both buckets, and a deploy fails while the bucket
    it names doesn't exist.
-3. **Apply the migrations.** `pnpm db:migrate:staging` (already done for
-   this repo's staging database). Before the first production release, run
+3. **Apply the migrations.** `pnpm db:migrate:staging` (done for this
+   repo's staging database up to `0002`; `0003` needs applying, see the
+   note after these steps). Before the first production release, run
    `pnpm db:migrate:prod`; the production database exists but has no tables
    yet.
 4. **Set the secrets** on the staging Worker:
@@ -74,7 +75,16 @@ D1. Do these steps in order:
    must be at least 32 characters. Branch previews use the staging Worker's
    secrets. Changing `ADMIN_PASSWORD` signs out every session, and logging
    out signs out every device.
-5. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
+5. **When the domain exists,** add
+   ```jsonc
+   "vars": { "PUBLIC_ORIGIN": "https://<domain>" }
+   ```
+   at the **top level only** of `wrangler.jsonc` (staging and branch previews
+   keep using the request's origin), run `pnpm cf-typegen`, and commit both
+   files. Link-preview tags and the WhatsApp message's link then use the
+   domain. Until then, every absolute URL uses the origin the request came
+   in on.
+6. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
    both secrets. The example values are deliberately too short and must be
    replaced (password at least 12 characters, secret at least 32), or the
    admin shows "not set up". Then:
@@ -87,7 +97,14 @@ D1. Do these steps in order:
    and open http://localhost:3000/admin.
 
 Remote migrations are run by hand on each schema change: Workers Builds does
-not apply them.
+not apply them. `migrations/0003_was_published.sql` adds
+`products.was_published`. Without it, pages still render, but creating,
+saving, publishing or hiding a product in the admin fails with "no such
+column: was_published", and every hidden product's link answers 404 instead
+of "no longer available". Branch previews share the staging database, so
+run `pnpm db:migrate:staging` before this code's preview or merge into
+`develop` is used, and `pnpm db:migrate:prod` before its first production
+deploy.
 
 Photos are processed on upload by Cloudflare Images; the binding needs no
 resource. If the first upload on staging answers "Photo processing isn't
@@ -129,6 +146,16 @@ in both `/ar/p/<slug>` and `/en/p/<slug>`:
 5. Mark the size sold out in the admin, then tap the button on the page that
    is still open. The page reloads with "That size just sold out", and
    WhatsApp does not open. Mark the size in stock again afterwards.
+6. Paste `/en/p/<slug>` and `/ar/p/<slug>` into a WhatsApp chat with
+   yourself and into an Instagram DM. The preview shows the photo, the name
+   and the price, in that link's language. With `?color=<key>` added, the
+   photo is that color's. A link to a product that was published and is now
+   hidden opens the "no longer available" page with the button back to the
+   catalog.
+
+WhatsApp and Facebook cache link previews, so a changed photo or price may not
+show at once. Facebook's Sharing Debugger
+(`https://developers.facebook.com/tools/debug/`) re-scrapes a link.
 
 ## Checks
 

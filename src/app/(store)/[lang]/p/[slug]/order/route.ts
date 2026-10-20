@@ -10,7 +10,8 @@ import type { NextRequest } from "next/server";
 
 import { getProductBySlug, getSettings, SLUG, SLUG_MAX } from "@/lib/catalog";
 import { isLocale, withLocale } from "@/lib/i18n/locales";
-import { decideOrder, requestOrigin } from "@/lib/order/decide";
+import { decideOrder } from "@/lib/order/decide";
+import { getSiteOrigin } from "@/lib/site/origin";
 
 const HEADERS = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } as const;
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/[lang]/p/[sl
       product,
       settings,
       locale: lang,
-      origin: requestOrigin(request.headers, request.url),
+      origin: await getSiteOrigin(request.headers),
       query: { color: sp.get("color"), size: sp.get("size"), price: sp.get("price") },
     });
     location = decision.kind === "whatsapp" ? decision.url : decision.path;

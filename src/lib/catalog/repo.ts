@@ -45,6 +45,7 @@ const PRODUCT_COLUMNS = [
   "sold_out",
   "size_chart",
   "published",
+  "was_published",
   "sort_order",
   "created_at",
   "updated_at",
@@ -52,9 +53,21 @@ const PRODUCT_COLUMNS = [
 
 const INSERT_PRODUCT = `INSERT INTO products (${PRODUCT_COLUMNS.join(", ")}) VALUES (${PRODUCT_COLUMNS.map((_, i) => `?${i + 1}`).join(", ")})`;
 
-/** Every column but `id`, bound in PRODUCT_COLUMNS order; `id` is the last parameter. */
-const UPDATE_COLUMNS = PRODUCT_COLUMNS.filter((c) => c !== "id");
-const UPDATE_PRODUCT = `UPDATE products SET ${UPDATE_COLUMNS.map((c, i) => `${c} = ?${i + 1}`).join(", ")} WHERE id = ?${UPDATE_COLUMNS.length + 1}`;
+/**
+ * Every column but `id` and `was_published`, bound in PRODUCT_COLUMNS order;
+ * `id` is the last parameter. `was_published` only rises, in SQL, so it is
+ * never lowered and never read-modify-written. In SQLite an UPDATE's
+ * right-hand `published` is the row's pre-update value, so the MAX also
+ * counts a product that is live now (say, published by older code that never
+ * set `was_published`): hiding it always marks it once-published.
+ */
+export const UPDATE_COLUMNS = PRODUCT_COLUMNS.filter((c) => c !== "id" && c !== "was_published");
+export const PUBLISHED_PARAM = UPDATE_COLUMNS.indexOf("published") + 1;
+export const UPDATE_PRODUCT = `UPDATE products SET ${UPDATE_COLUMNS.map((c, i) => `${c} = ?${i + 1}`).join(", ")}, was_published = MAX(was_published, published, ?${PUBLISHED_PARAM}) WHERE id = ?${UPDATE_COLUMNS.length + 1}`;
+
+/** The right-hand `published` is the pre-update value, as in UPDATE_PRODUCT. */
+export const SET_PUBLISHED =
+  "UPDATE products SET published = ?1, was_published = MAX(was_published, published, ?1), updated_at = ?2 WHERE id = ?3";
 
 const now = () => new Date().toISOString();
 
@@ -137,6 +150,7 @@ export async function createProduct(input: ProductInput, opts: SaveOptions): Pro
     ...data,
     slug,
     id: crypto.randomUUID(),
+    wasPublished: data.published,
     sortOrder: nextSortOrder(min?.min == null ? [] : [min.min]),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -161,9 +175,9 @@ export async function updateProduct(id: string, input: ProductInput, opts: SaveO
   const db = await getDb();
 
   const current = await db
-    .prepare("SELECT sort_order, created_at FROM products WHERE id = ?1")
+    .prepare("SELECT sort_order, created_at, published, was_published FROM products WHERE id = ?1")
     .bind(id)
-    .first<Pick<ProductRow, "sort_order" | "created_at">>();
+    .first<Pick<ProductRow, "sort_order" | "created_at" | "published" | "was_published">>();
   if (!current) throw new Error(`Product ${id} not found`);
 
   const slug = await resolveSlug(db, data.slug, opts, id);
@@ -173,6 +187,8 @@ export async function updateProduct(id: string, input: ProductInput, opts: SaveO
     ...data,
     slug,
     id,
+    // Mirrors the SQL's MAX(was_published, published, ?n) for the returned object.
+    wasPublished: current.was_published === 1 || current.published === 1 || data.published,
     sortOrder: current.sort_order,
     createdAt: current.created_at,
     updatedAt: now(),
@@ -195,7 +211,7 @@ export async function updateProduct(id: string, input: ProductInput, opts: SaveO
 export async function setPublished(id: string, published: boolean): Promise<void> {
   const db = await getDb();
   const { meta } = await db
-    .prepare("UPDATE products SET published = ?1, updated_at = ?2 WHERE id = ?3")
+    .prepare(SET_PUBLISHED)
     .bind(published ? 1 : 0, now(), id)
     .run();
   if (meta.changes === 0) throw new Error(`Product ${id} not found`);

@@ -7,7 +7,7 @@
  */
 import { productSchema, settingsSchema, type Product, type Settings } from "./schema";
 
-/** A `products` row as D1 returns it (see migrations/0001_catalog.sql). */
+/** A `products` row as D1 returns it (see migrations/0001_catalog.sql and 0003_was_published.sql). */
 export type ProductRow = {
   id: string;
   slug: string;
@@ -22,6 +22,7 @@ export type ProductRow = {
   sold_out: string; // JSON {color,size}[]
   size_chart: string | null; // JSON Photo or NULL
   published: number; // 0/1
+  was_published: number; // 0/1, 1 once ever published
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -62,6 +63,7 @@ export function rowToProduct(row: ProductRow): Product {
     soldOut: parseJson("sold_out", row.sold_out),
     sizeChart: row.size_chart === null ? null : parseJson("size_chart", row.size_chart),
     published: row.published === 1,
+    wasPublished: row.was_published === 1,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -100,6 +102,7 @@ export function productToRow(p: Product): ProductRow {
     sold_out: JSON.stringify(p.soldOut),
     size_chart: p.sizeChart === null ? null : JSON.stringify(p.sizeChart),
     published: p.published ? 1 : 0,
+    was_published: p.wasPublished ? 1 : 0,
     sort_order: p.sortOrder,
     created_at: p.createdAt,
     updated_at: p.updatedAt,

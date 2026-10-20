@@ -203,12 +203,20 @@ describe("productSchema", () => {
   const stored = () => ({
     ...validProduct(),
     id: "p_123",
+    wasPublished: false,
     sortOrder: -1,
     createdAt: "2026-10-19T10:00:00.000Z",
     updatedAt: "2026-10-19T10:00:00.000Z",
   });
 
   test("accepts a stored product", () => expect(productSchema.parse(stored()).id).toBe("p_123"));
+
+  test("requires wasPublished, which the input schema never carries", () => {
+    const withoutFlag: Partial<ReturnType<typeof stored>> = stored();
+    delete withoutFlag.wasPublished;
+    expect(() => productSchema.parse(withoutFlag)).toThrow();
+    expect(productInputSchema.parse({ ...validProduct(), wasPublished: true })).not.toHaveProperty("wasPublished");
+  });
 
   test("applies the same rules as the input schema", () => {
     expect(productSchema.parse({ ...stored(), code: "" }).code).toBeNull();

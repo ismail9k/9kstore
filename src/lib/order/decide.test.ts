@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import type { Color, Product, Settings } from "@/lib/catalog/schema";
 
-import { decideOrder, parseNotice, requestOrigin, type OrderQuery } from "./decide";
+import { decideOrder, parseNotice, type OrderQuery } from "./decide";
 
 // The dev seed's product (migrations/seed/dev.sql), photos left out.
 const color = (key: string, nameEn: string, nameAr: string, swatch: string): Color => ({ key, nameAr, nameEn, swatch, photos: [] });
@@ -26,6 +26,7 @@ const product: Product = {
   soldOut: [{ color: "black", size: "S" }],
   sizeChart: null,
   published: true,
+  wasPublished: true,
   sortOrder: 0,
   createdAt: "2026-10-19T00:00:00.000Z",
   updatedAt: "2026-10-19T00:00:00.000Z",
@@ -91,11 +92,4 @@ describe("decideOrder", () => {
 describe("parseNotice", () => {
   test.each(["sold-out", "changed", "failed"])("accepts %s", (v) => expect(parseNotice(v)).toBe(v));
   test.each(["x", "", null, undefined, ["sold-out"]])("rejects %j", (v) => expect(parseNotice(v as never)).toBeNull());
-});
-
-describe("requestOrigin", () => {
-  test("forwarded headers win", () =>
-    expect(requestOrigin(new Headers({ "x-forwarded-proto": "https", "x-forwarded-host": "9k.example", host: "internal" }), "http://internal/x")).toBe("https://9k.example"));
-  test("host header next", () => expect(requestOrigin(new Headers({ host: "shop.example" }), "https://ignored/x")).toBe("https://shop.example"));
-  test("the URL last, with no trailing slash", () => expect(requestOrigin(new Headers(), "http://localhost:3000/ar/p/tee/order?x=1")).toBe("http://localhost:3000"));
 });

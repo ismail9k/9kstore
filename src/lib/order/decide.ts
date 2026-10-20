@@ -63,11 +63,3 @@ export function decideOrder(input: {
   );
   return { kind: "whatsapp", url: whatsappUrl(settings.whatsappNumber, message) };
 }
-
-/** `<proto>://<host>` the request was reached on: forwarded headers, then `Host`, then the URL itself. */
-export function requestOrigin(headers: Headers, url: string): string {
-  const parsed = new URL(url);
-  const proto = headers.get("x-forwarded-proto") ?? parsed.protocol.replace(/:$/, "");
-  const host = headers.get("x-forwarded-host") ?? headers.get("host") ?? parsed.host;
-  return `${proto}://${host}`;
-}

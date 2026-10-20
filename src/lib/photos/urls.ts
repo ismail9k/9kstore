@@ -34,6 +34,13 @@ export function photoOgSrc(photo: Photo): string {
   return `/photos/${photo.key}/${OG_VARIANT.file}`;
 }
 
+/** The 1280.jpg's size: the master scaled down to 1280 wide (never up), or null when unknown. */
+export function ogImageSize(photo: Photo): { width: number; height: number } | null {
+  if (photo.width === undefined || photo.height === undefined) return null;
+  const width = Math.min(OG_VARIANT.width, photo.width);
+  return { width, height: Math.round((photo.height * width) / photo.width) };
+}
+
 /** The master's dimensions, or null when either is unknown. */
 export function photoAspect(photo: Photo): { width: number; height: number } | null {
   if (photo.width === undefined || photo.height === undefined) return null;
