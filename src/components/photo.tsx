@@ -31,7 +31,7 @@ export function Photo({
   alt: string;
   sizes: string;
   priority?: boolean;
-  /** `false` where the photo is dragged to scroll (the home rail), so the browser doesn't drag the image. */
+  /** `false` where the photo is dragged to scroll (the home rail, the product gallery), so the browser doesn't drag the image. */
   draggable?: boolean;
   className?: string;
 }) {
