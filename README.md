@@ -119,6 +119,14 @@ The login already locks a client IP out for 15 minutes after 5 tries within
 IP, so someone sharing the owner's IP (the same Wi-Fi or mobile carrier NAT)
 can lock the owner out for 15 minutes.
 
+The login only checks a password posted straight to `/admin/login`. Next
+forwards a login posted to any other page (`/ar`, `/admin`, ...) to the login
+page, and the login refuses those forwarded calls without checking or counting
+them, so a WAF rule on `POST /admin/login` covers every checked guess. Count by
+IP. The rule may also count Next's forwarded copy, which only blocks the
+sender. The lockout counts each guess under the IP Cloudflare reports
+(`cf-connecting-ip`) and never reads `X-Forwarded-For`.
+
 ### Owner follow-up: test the order button on real phones
 
 Laptop browsers and `pnpm preview` can't stand in for Instagram's in-app
