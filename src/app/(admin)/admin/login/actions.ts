@@ -74,10 +74,15 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     const first = steps[0];
     if (first) await clearLoginAttempts(first.key);
     await createSession();
-    await rememberDevice(secrets);
   } catch (err) {
     console.error("login: starting the session failed", err);
     return { error: LOGIN_FAILED };
+  }
+  // The device cookie is a convenience: failing to set it never undoes a login.
+  try {
+    await rememberDevice(secrets);
+  } catch (err) {
+    console.error("login: remembering the device failed", err);
   }
   redirect("/admin");
 }
