@@ -10,7 +10,7 @@ import { photoAspect, photoSrc, photoSrcSet } from "@/lib/photos/urls";
  * `sizes` is the slot's CSS width and is required:
  * - catalog cards (#4): `"(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"`,
  *   all lazy (they sit below the hero);
- * - the home page rail's tees (#4): `"(min-width: 1024px) 224px, (min-width: 640px) 30vw, 46vw"`,
+ * - the home page rail's tees (#4): `"(min-width: 1024px) 224px, (min-width: 640px) 28vw, 46vw"`,
  *   with `priority` (they are the above-the-fold photos);
  * - the product gallery (#5): `"(min-width: 768px) 50vw, 100vw"`.
  *
@@ -23,6 +23,7 @@ export function Photo({
   alt,
   sizes,
   priority = false,
+  draggable,
   className,
 }: {
   photo: PhotoData;
@@ -30,6 +31,8 @@ export function Photo({
   alt: string;
   sizes: string;
   priority?: boolean;
+  /** `false` where the photo is dragged to scroll (the home rail), so the browser doesn't drag the image. */
+  draggable?: boolean;
   className?: string;
 }) {
   const aspect = photoAspect(photo);
@@ -42,6 +45,7 @@ export function Photo({
       srcSet={photoSrcSet(photo)}
       sizes={sizes}
       alt={alt}
+      draggable={draggable}
       className={className}
       width={aspect?.width}
       height={aspect?.height}

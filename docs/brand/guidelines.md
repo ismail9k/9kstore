@@ -137,8 +137,11 @@ by default. Today that's the oversized tee in grey, black, green and cream.
   slightly different heights in each photo, so each tee is aligned by its own
   hook (the first visible pixel from the top of the cutout), not by the image
   box.
-- On a phone, the tees overlap slightly and run off both edges of the screen,
-  like the reference.
+- The tees always overlap slightly, on every screen size, so their sleeves
+  stack. On a phone they also run off both edges of the screen, like the
+  reference. The rail opens with the middle tee centered, and a sideways
+  swipe (or a mouse drag, which settles on the nearest tee) slides the tees
+  and the bar along to bring the outer ones into view.
 - Tapping a hanging tee opens that product's page with the color already
   selected (`/<lang>/p/<slug>?color=<color>`), once the product page exists.
 
