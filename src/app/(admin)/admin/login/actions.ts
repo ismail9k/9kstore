@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { isLocked, type AttemptRecord } from "@/lib/auth/attempts";
+import { CLIENT_POLICY, isLocked, type AttemptRecord } from "@/lib/auth/attempts";
 import { timingSafeEqual } from "@/lib/auth/password";
 import { getSecrets } from "@/lib/auth/secrets";
 import { createSession } from "@/lib/auth/session";
@@ -41,7 +41,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const now = Date.now();
   let record: AttemptRecord;
   try {
-    record = await recordLoginAttempt(ip, now);
+    record = await recordLoginAttempt(ip, now, CLIENT_POLICY);
   } catch (err) {
     console.error("login: recording the attempt failed", err);
     return { error: LOGIN_FAILED };
