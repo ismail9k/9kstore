@@ -74,7 +74,9 @@ D1. Do these steps in order:
    up" page). Generate `SESSION_SECRET` with `openssl rand -base64 32`; it
    must be at least 32 characters. Branch previews use the staging Worker's
    secrets. Changing `ADMIN_PASSWORD` signs out every session, and logging
-   out signs out every device.
+   out signs out every device. Make the password long and random (a password
+   manager's generated one): the login limits slow guessing but can't save a
+   weak password.
 5. **When the domain exists,** add
    ```jsonc
    "vars": { "PUBLIC_ORIGIN": "https://<domain>" }
@@ -113,11 +115,14 @@ enable Images (Transformations) for the account in the Cloudflare dashboard.
 
 ### Owner follow-up: rate-limit the login
 
-The login already locks a client IP out for 15 minutes after 5 tries within
-15 minutes. As an extra layer, add a Cloudflare WAF rate-limiting rule on
-`POST /admin/login` for both Workers' domains. The built-in lockout is per
-IP, so someone sharing the owner's IP (the same Wi-Fi or mobile carrier NAT)
-can lock the owner out for 15 minutes.
+Each address gets 5 login tries in 15 minutes (an IPv6 /64 counts as one
+address). Devices that have never logged in share 20 tries an hour between
+them. A device that has logged in before keeps its own 5-tries limit, so it
+can still log in while that shared limit holds; someone on the same Wi-Fi can
+now only lock out a device that has never logged in. After this change ships,
+log out and back in once on your laptop so it is remembered.
+As an extra layer, add a Cloudflare WAF rate-limiting rule on
+`POST /admin/login` for both Workers' domains.
 
 ### Owner follow-up: test the order button on real phones
 
