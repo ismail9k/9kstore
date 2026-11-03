@@ -80,7 +80,8 @@ to the code as `*.test.ts(x)`.
 Next.js 16 App Router under `src/app`, deployed to Cloudflare Workers through
 OpenNext (`@opennextjs/cloudflare`). Import from `src` with the `@/` alias.
 Product and settings data live in D1 behind `src/lib/catalog` (server-only;
-never cache its reads).
+never cache its reads in the app: the rendered pages are cached at the edge
+instead, see "Workers Cache" below).
 
 The app has two root layouts. Customer pages live under
 `src/app/(store)/[lang]/`, where `lang` is a root param read with
@@ -112,9 +113,22 @@ missing one from the master. Customer pages render photos through
 `src/components/photo.tsx` (`photoSrcSet`/`sizes`), and link previews use
 `photoOgSrc`. The degraded paths (serving the master, uploading without
 variants) run only under `NEXTJS_ENV=development`; a deployed Worker answers
-503 instead. Workers Cache is on (`cache` in `wrangler.jsonc`), so any new
-response that must not be cached has to carry `private` or `no-store` (Next
-pages already do).
+503 instead.
+
+Workers Cache is on (`cache` in `wrangler.jsonc`; off on staging for now) and
+sits in front of the whole Worker: a hit never runs it. Any new response that
+must not be cached has to carry `private` or `no-store` (Next pages already
+do). The Worker entry is `worker.ts`, which wraps OpenNext's and, through
+`src/lib/cache/pages.ts`, makes exactly two kinds of page shared: the catalog
+(`/ar`, `/en`, tagged `store,catalog`) and product pages (`/<lang>/p/<slug>`,
+tagged `store,product:<slug>`), on a 200 with no `Set-Cookie`. Those pages
+must never read a cookie or anything else about the visitor; a page that
+does stays out of `sharedPageTags`. The admin's actions purge by tag through
+`src/lib/cache/purge.ts` after each write: a product save, publish or hide
+purges that product (old slug too on a rename) and the catalog, a reorder
+the catalog, a settings save every shared page. A new write that changes
+what customers see needs its purge too. The cache is per Worker version, so
+a deploy starts it empty.
 
 The brief's suggested target, which the config is set up for:
 
