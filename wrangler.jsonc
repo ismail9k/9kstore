@@ -49,7 +49,8 @@
       ],
       "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos-staging" }],
       "images": { "binding": "IMAGES" },
-      "cache": { "enabled": true, "cross_version_cache": true },
+      // Off for now, to measure CPU time with no Workers Cache in front.
+      "cache": { "enabled": false },
       // The store must fit Cloudflare's free plan, which allows 10 ms of CPU
       // per request. The account is on Workers Paid, so staging enforces the
       // free limit itself; a request over it fails with error 1102.
