@@ -80,3 +80,63 @@ export async function verifyToken(
     return null;
   }
 }
+
+/**
+ * A known-device payload. `id` is a random 22-character base64url string
+ * (see `newDeviceId`); `iat` and `exp` are milliseconds since the epoch.
+ */
+export type DevicePayload = { id: string; iat: number; exp: number };
+
+/**
+ * The HMAC key for device tokens. Prefixed so a session token never verifies
+ * as a device token (nor the reverse); changing `ADMIN_PASSWORD` or
+ * `SESSION_SECRET` forgets every device.
+ */
+export function deviceSigningKey(secrets: Secrets): string {
+  return `device\n${signingKey(secrets)}`;
+}
+
+/** A fresh random device id: 16 bytes as 22 base64url characters. */
+export function newDeviceId(): string {
+  return toBase64url(crypto.getRandomValues(new Uint8Array(16)));
+}
+
+function isDevicePayload(value: unknown): value is DevicePayload {
+  if (typeof value !== "object" || value === null) return false;
+  const { id, iat, exp } = value as Record<string, unknown>;
+  return (
+    typeof id === "string" && /^[A-Za-z0-9_-]{22}$/.test(id) && Number.isFinite(iat) && Number.isFinite(exp)
+  );
+}
+
+/** Same format as a session token, with the device payload. */
+export async function signDeviceToken(payload: DevicePayload, secret: string): Promise<string> {
+  const body = toBase64url(
+    encoder.encode(JSON.stringify({ id: payload.id, iat: payload.iat, exp: payload.exp })),
+  );
+  return `${body}.${await hmac(body, secret)}`;
+}
+
+/**
+ * Returns the payload of a device token signed with `secret` that has not
+ * expired at `now`, or `null` for anything else. Never throws.
+ */
+export async function verifyDeviceToken(
+  token: string | undefined,
+  secret: string,
+  now: number = Date.now(),
+): Promise<DevicePayload | null> {
+  try {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+    const [body, signature] = parts as [string, string];
+    if (!timingSafeEqual(await hmac(body, secret), signature)) return null;
+    const payload: unknown = JSON.parse(decoder.decode(fromBase64url(body)));
+    if (!isDevicePayload(payload)) return null;
+    if (payload.exp <= now) return null;
+    return { id: payload.id, iat: payload.iat, exp: payload.exp };
+  } catch {
+    return null;
+  }
+}

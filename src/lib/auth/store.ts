@@ -1,12 +1,13 @@
 /**
  * The owner login's state in D1 (migrations/0002_auth.sql): the failed-attempt
- * record per client IP and the session version. Server-only; never cached.
+ * record per bucket (the `ip` column holds a bucket key: `ip:…`, `net:…::/64`,
+ * `device:…` or `global`) and the session version. Server-only; never cached.
  */
 import "server-only";
 
 import { getDb } from "@/lib/db";
 
-import { LOCKOUT_MS, MAX_FAILURES, WINDOW_MS, type AttemptRecord } from "./attempts";
+import type { AttemptPolicy, AttemptRecord } from "./attempts";
 
 type AttemptRow = { failures: number; window_start: number; locked_until: number | null };
 
@@ -15,8 +16,8 @@ type AttemptRow = { failures: number; window_start: number; locked_until: number
 // expressions see the same old values. Their branches, in order, are
 // `nextAttempt`'s: 1. still locked → count, keep window and lock;
 // 2. ended lock or expired window → fresh window of one;
-// 3. same window → count, lock once the count passes MAX_FAILURES.
-// ?1 ip, ?2 now, ?3 WINDOW_MS, ?4 MAX_FAILURES, ?5 LOCKOUT_MS.
+// 3. same window → count, lock once the count passes the policy's maxFailures.
+// ?1 bucket key, ?2 now, ?3 windowMs, ?4 maxFailures, ?5 lockoutMs.
 const RECORD_ATTEMPT = `
 INSERT INTO login_attempts (ip, failures, window_start, locked_until)
 VALUES (?1, 1, ?2, NULL)
@@ -40,21 +41,25 @@ ON CONFLICT (ip) DO UPDATE SET
 RETURNING failures, window_start, locked_until`;
 
 /**
- * Counts one login attempt from `ip` at `now` and returns the IP's record
- * after it. Call before checking the password.
+ * Counts one login attempt on bucket `key` at `now` under `policy` and
+ * returns the bucket's record after it. Call before checking the password.
  */
-export async function recordLoginAttempt(ip: string, now: number): Promise<AttemptRecord> {
+export async function recordLoginAttempt(
+  key: string,
+  now: number,
+  policy: AttemptPolicy,
+): Promise<AttemptRecord> {
   const row = await (await getDb())
     .prepare(RECORD_ATTEMPT)
-    .bind(ip, now, WINDOW_MS, MAX_FAILURES, LOCKOUT_MS)
+    .bind(key, now, policy.windowMs, policy.maxFailures, policy.lockoutMs)
     .first<AttemptRow>();
   if (!row) throw new Error("Recording the login attempt returned no row");
   return { failures: row.failures, windowStart: row.window_start, lockedUntil: row.locked_until };
 }
 
-/** Forgets `ip`'s attempts. Call after a correct password. */
-export async function clearLoginAttempts(ip: string): Promise<void> {
-  await (await getDb()).prepare("DELETE FROM login_attempts WHERE ip = ?1").bind(ip).run();
+/** Forgets bucket `key`'s attempts. Call after a correct password. */
+export async function clearLoginAttempts(key: string): Promise<void> {
+  await (await getDb()).prepare("DELETE FROM login_attempts WHERE ip = ?1").bind(key).run();
 }
 
 /** The current session version. Throws when it cannot be read. */
