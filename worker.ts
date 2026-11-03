@@ -19,7 +19,7 @@ const next = openNext as Required<Pick<ExportedHandler<CloudflareEnv>, "fetch">>
 
 export default {
   async fetch(request, env, ctx) {
-    const tags = sharedPageTags(request.method, new URL(request.url));
+    const tags = sharedPageTags(request.method, new URL(request.url), request.headers);
     if (!tags) return next.fetch(request, env, ctx);
     return sharePage(await next.fetch(withoutForwardedHeaders(request), env, ctx), tags);
   },

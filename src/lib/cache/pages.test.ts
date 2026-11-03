@@ -12,27 +12,41 @@ import {
 } from "./pages";
 
 const at = (path: string) => new URL(path, "https://9kstore.example");
+const html = new Headers({ accept: "text/html" });
+const rsc = (extra: Record<string, string> = {}) => new Headers({ rsc: "1", ...extra });
 
 describe("sharedPageTags", () => {
   it("tags the catalog in both languages", () => {
-    expect(sharedPageTags("GET", at("/ar"))).toEqual([STORE_TAG, CATALOG_TAG]);
-    expect(sharedPageTags("GET", at("/en"))).toEqual([STORE_TAG, CATALOG_TAG]);
+    expect(sharedPageTags("GET", at("/ar"), html)).toEqual([STORE_TAG, CATALOG_TAG]);
+    expect(sharedPageTags("GET", at("/en"), html)).toEqual([STORE_TAG, CATALOG_TAG]);
   });
 
   it("tags a product page by its slug, with or without ?color=", () => {
-    expect(sharedPageTags("GET", at("/en/p/oversized-tee"))).toEqual([STORE_TAG, "product:oversized-tee"]);
-    expect(sharedPageTags("HEAD", at("/ar/p/oversized-tee?color=black"))).toEqual([
+    expect(sharedPageTags("GET", at("/en/p/oversized-tee"), html)).toEqual([STORE_TAG, "product:oversized-tee"]);
+    expect(sharedPageTags("HEAD", at("/ar/p/oversized-tee?color=black"), html)).toEqual([
       STORE_TAG,
       productTag("oversized-tee"),
     ]);
   });
 
-  it("shares RSC requests too: Next's Vary keeps them apart from the HTML", () => {
-    expect(sharedPageTags("GET", at("/ar/p/tee?_rsc=abc12"))).not.toBeNull();
+  it("shares RSC requests, which the client router keys with ?_rsc=", () => {
+    expect(sharedPageTags("GET", at("/ar/p/tee?_rsc=abc12"), rsc())).toEqual([STORE_TAG, productTag("tee")]);
+    expect(
+      sharedPageTags("GET", at("/ar?_rsc=abc12"), rsc({ "next-router-prefetch": "1", "next-router-state-tree": "x" })),
+    ).toEqual([STORE_TAG, CATALOG_TAG]);
+  });
+
+  it("does not share a request whose URL would not tell RSC from HTML", () => {
+    // An RSC payload under the HTML key…
+    expect(sharedPageTags("GET", at("/ar/p/tee"), rsc())).toBeNull();
+    expect(sharedPageTags("GET", at("/ar"), new Headers({ "next-router-prefetch": "1" }))).toBeNull();
+    // …or HTML under an RSC key.
+    expect(sharedPageTags("GET", at("/ar/p/tee?_rsc=abc12"), html)).toBeNull();
+    expect(sharedPageTags("GET", at("/ar?_rsc=abc12"), new Headers({ rsc: "0" }))).toBeNull();
   });
 
   it("never shares a page the order route bounced the customer to", () => {
-    expect(sharedPageTags("GET", at("/en/p/tee?notice=soldout"))).toBeNull();
+    expect(sharedPageTags("GET", at("/en/p/tee?notice=soldout"), html)).toBeNull();
   });
 
   it.each([
@@ -50,11 +64,11 @@ describe("sharedPageTags", () => {
     "/admin/products/1",
     "/photos/abc/640.webp",
   ])("does not share %s", (path) => {
-    expect(sharedPageTags("GET", at(path))).toBeNull();
+    expect(sharedPageTags("GET", at(path), html)).toBeNull();
   });
 
   it("does not share writes", () => {
-    expect(sharedPageTags("POST", at("/ar"))).toBeNull();
+    expect(sharedPageTags("POST", at("/ar"), html)).toBeNull();
   });
 });
 

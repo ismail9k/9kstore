@@ -7,9 +7,11 @@
  * (the admin, the order redirect, the language toggle, the proxy's redirects)
  * keeps Next's own `private`/`no-store` and runs on every request.
  *
- * Workers Cache keys on the path and query (not the host, not cookies) and
- * honors `Vary`, so Next's `Vary: rsc, next-router-state-tree, …` keeps an RSC
- * payload and the HTML of one URL apart. `Host` is added to `Vary` because
+ * Workers Cache keys on the path and query (not the host, not cookies). It
+ * also honors `Vary`, but the RSC payload and the HTML of one URL are kept
+ * apart by the key alone (see `isConsistentRscRequest`), so a cache that
+ * ignored Next's `Vary: rsc, …` could still not serve one for the other.
+ * `Host` is added to `Vary` because
  * absolute URLs (canonical, Open Graph) come from the request's host until
  * `PUBLIC_ORIGIN` is set, and the Worker answers on more than one hostname.
  * https://developers.cloudflare.com/workers/cache/cache-keys/
@@ -37,15 +39,33 @@ export function productTag(slug: string): string {
 export const BROWSER_CACHE_CONTROL = "public, max-age=0";
 export const EDGE_CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=60";
 
+/** The request headers that make Next answer with an RSC payload instead of HTML. */
+const ROUTER_HEADERS = ["rsc", "next-router-prefetch", "next-router-state-tree", "next-router-segment-prefetch"];
+
+/**
+ * Whether the URL alone tells an RSC request from an HTML one. The client
+ * router sends `rsc: 1` with `?_rsc=<hash of the router headers>`, and Next
+ * redirects when the hash does not match the headers, so an RSC response is
+ * only ever stored under its own `_rsc` key. Router headers without `_rsc`,
+ * or `_rsc` without `rsc: 1`, would let one kind land under the other's key,
+ * so those requests are not shared.
+ */
+function isConsistentRscRequest(url: URL, headers: Headers): boolean {
+  const hasParam = url.searchParams.has("_rsc");
+  if (headers.get("rsc") === "1") return hasParam;
+  return !hasParam && !ROUTER_HEADERS.some((name) => headers.has(name));
+}
+
 /**
  * The tags of a request for a shared page, or null when its response must not
  * be shared. GET and HEAD only (the only methods the cache stores). A
  * `?notice=` page is where the order route sends a customer after the price
  * or stock changed, so it always renders fresh.
  */
-export function sharedPageTags(method: string, url: URL): string[] | null {
+export function sharedPageTags(method: string, url: URL, headers: Headers): string[] | null {
   if (method !== "GET" && method !== "HEAD") return null;
   if (url.searchParams.has("notice")) return null;
+  if (!isConsistentRscRequest(url, headers)) return null;
 
   const [, lang, ...rest] = url.pathname.split("/");
   if (!lang || !isLocale(lang)) return null;
