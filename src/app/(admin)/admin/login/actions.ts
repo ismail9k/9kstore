@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { isLocked, type AttemptRecord } from "@/lib/auth/attempts";
 import { timingSafeEqual } from "@/lib/auth/password";
+import { connectingIp, isForwardedAction } from "@/lib/auth/request-source";
 import { getSecrets } from "@/lib/auth/secrets";
 import { createSession } from "@/lib/auth/session";
 import { clearLoginAttempts, recordLoginAttempt } from "@/lib/auth/store";
@@ -19,11 +20,12 @@ const WRONG_PASSWORD_DELAY_MS = 1000;
 
 const wait = () => new Promise((resolve) => setTimeout(resolve, WRONG_PASSWORD_DELAY_MS));
 
-/** The client's IP as Cloudflare reports it, else the first proxy hop. */
+/**
+ * The client's IP as Cloudflare's edge reports it (`cf-connecting-ip`), never
+ * `x-forwarded-for`, or `unknown` off Cloudflare.
+ */
 async function clientIp(): Promise<string> {
-  const list = await headers();
-  const forwarded = list.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return list.get("cf-connecting-ip")?.trim() || forwarded || "unknown";
+  return connectingIp(await headers());
 }
 
 /**
@@ -34,6 +36,14 @@ async function clientIp(): Promise<string> {
  * no database failure reaches Next's error page.
  */
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  // Next forwards a Server Action posted to any other page to /admin/login
+  // with x-action-forwarded. Such a call is never checked or counted, so every
+  // checked guess came straight to /admin/login with Cloudflare's IP.
+  if (isForwardedAction(await headers())) {
+    console.warn("login: refused an attempt forwarded from another page");
+    return { error: "Log in from the login page." };
+  }
+
   const secrets = await getSecrets();
   if (!secrets) return { error: "Admin is not set up yet." };
 
