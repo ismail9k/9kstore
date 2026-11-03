@@ -10,12 +10,9 @@ import { MESSAGES } from "@/lib/photos/process";
 import { PHOTO_ID } from "@/lib/photos/variants";
 
 import { normalizeWhatsapp } from "./helpers";
+import { SLUG, SLUG_MAX } from "./slug";
 
-/** The slug and color-key rule: lowercase letters and digits in hyphen-separated runs. */
-export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/** The longest slug the store accepts; routes reject longer ones before reading D1. */
-export const SLUG_MAX = 80;
+export { SLUG, SLUG_MAX };
 
 const requiredText = (label: string, max: number) =>
   z

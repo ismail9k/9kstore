@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  // Wraps OpenNext's `.open-next/worker.js` to let Workers Cache share the
+  // catalog and product pages (see worker.ts).
+  "main": "worker.ts",
   "name": "9k-store",
   "compatibility_date": "2026-10-12",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -24,10 +26,13 @@
       "migrations_dir": "migrations",
     },
   ],
-  // The product photos bucket and the Images processor are bound here; `cache` is Workers Cache for the photo variants (pages opt out through Next's own `Cache-Control`).
+  // The product photos bucket and the Images processor are bound here. `cache` is Workers Cache: it serves
+  // the photo variants and the catalog and product pages (worker.ts), and every other page opts out through
+  // Next's own `Cache-Control`. The cache stays per version (no `cross_version_cache`): a cached page links
+  // to the `/_next/static` files of the version that rendered it, which the next deploy no longer serves.
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos" }],
   "images": { "binding": "IMAGES" },
-  "cache": { "enabled": true, "cross_version_cache": true },
+  "cache": { "enabled": true },
   "env": {
     // Deployed from `develop` by Workers Builds. Bindings are not inherited,
     // so every binding added above needs a staging copy here.
@@ -73,7 +78,7 @@
         ],
         "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos-staging" }],
         "images": { "binding": "IMAGES" },
-        "cache": { "enabled": true, "cross_version_cache": true },
+        "cache": { "enabled": true },
       },
     },
   },

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { destroySession, requireOwner } from "@/lib/auth/session";
-import { reorderProducts, setPublished } from "@/lib/catalog";
+import { purgeCatalog, purgeProduct } from "@/lib/cache/purge";
+import { getProduct, reorderProducts, setPublished } from "@/lib/catalog";
 
 import { checkOrderIds, checkToggleArgs } from "./action-args";
 
@@ -19,6 +20,8 @@ export async function togglePublished(id: string, published: boolean): Promise<v
   await requireOwner();
   const args = checkToggleArgs(id, published);
   await setPublished(args.id, args.published);
+  const product = await getProduct(args.id);
+  if (product) await purgeProduct(product.slug);
   revalidatePath("/admin");
 }
 
@@ -26,5 +29,6 @@ export async function togglePublished(id: string, published: boolean): Promise<v
 export async function saveOrder(ids: string[]): Promise<void> {
   await requireOwner();
   await reorderProducts(checkOrderIds(ids));
+  await purgeCatalog();
   revalidatePath("/admin");
 }

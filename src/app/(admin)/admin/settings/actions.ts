@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth/session";
+import { purgeStore } from "@/lib/cache/purge";
 import { updateSettings } from "@/lib/catalog";
 import type { Settings, SettingsInput } from "@/lib/catalog/schema";
 
@@ -33,6 +34,8 @@ export async function saveSettings(input: SettingsInput): Promise<SaveSettingsRe
     return { ok: false, errors: { form: SAVE_FAILED } };
   }
 
+  // Every shared page shows the settings (store name, footer, order button).
+  await purgeStore();
   // The header in the admin layout shows the store name, so refresh the layout too.
   revalidatePath("/admin", "layout");
   return { ok: true, settings };

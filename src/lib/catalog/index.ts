@@ -6,7 +6,9 @@
  *
  * Reads are never cached. Customer pages that show product data must opt out
  * of static rendering and read at request time, so admin edits go live
- * without a deploy.
+ * without a deploy. The catalog and product pages are cached as whole
+ * responses by Workers Cache instead, and the admin's writes purge them
+ * (`src/lib/cache`).
  */
 export * from "./schema";
 export * from "./helpers";
