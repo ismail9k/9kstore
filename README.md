@@ -77,15 +77,17 @@ D1. Do these steps in order:
    out signs out every device. Make the password long and random (a password
    manager's generated one): the login limits slow guessing but can't save a
    weak password.
-5. **When the domain exists,** add
+5. **The public domain** is set for production: `wrangler.jsonc` has
    ```jsonc
-   "vars": { "PUBLIC_ORIGIN": "https://<domain>" }
+   "vars": { "PUBLIC_ORIGIN": "https://store.9k.school" }
    ```
-   at the **top level only** of `wrangler.jsonc` (staging and branch previews
-   keep using the request's origin), run `pnpm cf-typegen`, and commit both
-   files. Link-preview tags and the WhatsApp message's link then use the
-   domain. Until then, every absolute URL uses the origin the request came
-   in on.
+   at the **top level only** (staging and branch previews keep using the
+   request's origin). Link-preview tags and the WhatsApp message's link use
+   it. Attach `store.9k.school` to the `9k-store` Worker as a custom domain
+   (Workers & Pages → `9k-store` → Settings → Domains & Routes) before the
+   first production deploy, or those links point at a domain that doesn't
+   serve the store. To change the domain, edit the value, run
+   `pnpm cf-typegen`, and commit both files.
 6. **Turn on PostHog** (analytics, error tracking, session replay). Set two
    **build** variables on each Worker in the Cloudflare dashboard: Workers &
    Pages → the Worker → Settings → Build → Variables and secrets.

@@ -35,6 +35,10 @@
   "cache": { "enabled": true },
   // Workers Logs: request logs and each request's CPU time, for production.
   "observability": { "enabled": true },
+  // Production only: link-preview tags and the WhatsApp message's link use the
+  // public domain. Staging and branch previews leave it unset and use the
+  // request's origin (`vars` is not inherited by `env.staging`).
+  "vars": { "PUBLIC_ORIGIN": "https://store.9k.school" },
   "env": {
     // Deployed from `develop` by Workers Builds. Bindings are not inherited,
     // so every binding added above needs a staging copy here.

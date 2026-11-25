@@ -42,8 +42,9 @@ export function siteOrigin(configured: string | undefined, headers: Headers): st
  * `request.headers`. The only source of absolute URLs on the site.
  */
 export async function getSiteOrigin(headers?: Headers): Promise<string> {
-  // PUBLIC_ORIGIN is not declared in wrangler.jsonc yet, hence the widened type.
-  let env: Partial<CloudflareEnv> & { PUBLIC_ORIGIN?: string } = {};
+  // PUBLIC_ORIGIN is set for production only (top-level `vars` in
+  // wrangler.jsonc); staging and previews leave it unset.
+  let env: Partial<CloudflareEnv> = {};
   try {
     env = (await getCloudflareContext({ async: true })).env;
   } catch {
