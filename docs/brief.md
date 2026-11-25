@@ -287,6 +287,8 @@ The owner can edit the wording of the greeting line in the admin settings.
 - **Promo codes** that are included in the WhatsApp message.
 - **Lookbook pages:** styled outfit photos that link to the products in them.
 - **Customer photos / reviews.**
+- **Photo storage sweep:** delete R2 objects no product references (removed
+  photos keep their files in v1).
 - **Search,** once there are more than about 50 products.
 - **Phone-friendly admin,** at least for quick jobs like marking a size sold
   out.

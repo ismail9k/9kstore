@@ -1,0 +1,239 @@
+import { describe, expect, test } from "vitest";
+
+import {
+  cardPhoto,
+  colorByKey,
+  colorKey,
+  DEFAULT_HOOK_TOP,
+  featuredProduct,
+  hookOffset,
+  initialColor,
+  isColorSoldOut,
+  isInStock,
+  isSoldOut,
+  linkState,
+  nameIn,
+  nextSortOrder,
+  normalizeWhatsapp,
+  railItems,
+  railPhoto,
+  sizeAvailability,
+  slugify,
+  uniqueSlug,
+} from "./helpers";
+import type { Color, Product } from "./schema";
+
+function color(key: string, photos: Color["photos"] = []): Color {
+  return { key, nameAr: key, nameEn: key, swatch: "#0a0a0a", photos };
+}
+
+function product(colors: Color[]): Product {
+  return {
+    id: "3f1c2a9e-0000-4000-8000-000000000001",
+    slug: "oversized-tee",
+    nameAr: "تيشيرت أوفرسايز",
+    nameEn: "Oversized Tee",
+    descriptionAr: "قطن ثقيل",
+    descriptionEn: "Heavy cotton",
+    priceEgp: 850,
+    code: "TEE-01",
+    sizes: ["S", "M", "L"],
+    colors,
+    soldOut: [{ color: "black", size: "S" }],
+    sizeChart: { key: "tee-size-chart", width: 800, height: 600 },
+    published: false,
+    wasPublished: false,
+    sortOrder: -3,
+    createdAt: "2026-10-19T10:00:00.000Z",
+    updatedAt: "2026-10-19T11:30:00.000Z",
+  };
+}
+
+describe("slugify", () => {
+  test("lowercases, strips accents and punctuation, hyphenates", () =>
+    expect(slugify("  Oversized Tee — Black! ")).toBe("oversized-tee-black"));
+  test("strips accents", () => expect(slugify("Café Crème")).toBe("cafe-creme"));
+  test("of Arabic-only text is empty", () => expect(slugify("تيشيرت")).toBe(""));
+  test("of punctuation-only text is empty", () => expect(slugify(" — !! ")).toBe(""));
+  test("keeps the Latin part of mixed text", () =>
+    expect(slugify("تيشيرت Tee 2")).toBe("tee-2"));
+});
+
+describe("uniqueSlug", () => {
+  test("returns the base when free", () => expect(uniqueSlug("tee", ["shirt"])).toBe("tee"));
+  test("suffixes -2, -3", () => expect(uniqueSlug("tee", ["tee", "tee-2"])).toBe("tee-3"));
+  test("accepts any iterable", () => expect(uniqueSlug("tee", new Set(["tee"]))).toBe("tee-2"));
+});
+
+describe("colorKey", () => {
+  test("is the slugified English name", () => expect(colorKey("Off White", [])).toBe("off-white"));
+  test("falls back to 'color' when the name has no Latin letters", () =>
+    expect(colorKey("أسود", [])).toBe("color"));
+  test("keeps keys unique within a product", () =>
+    expect(colorKey("Black", ["black"])).toBe("black-2"));
+  test("suffixes the 'color' fallback too", () =>
+    expect(colorKey("أسود", ["color", "color-2"])).toBe("color-3"));
+});
+
+describe("stock", () => {
+  const p = {
+    sizes: ["S", "M"],
+    colors: [color("black")],
+    soldOut: [{ color: "black", size: "S" }],
+  };
+
+  test("isInStock is false for a sold-out pair and for unknown color or size", () => {
+    expect(isInStock(p, "black", "M")).toBe(true);
+    expect(isInStock(p, "black", "S")).toBe(false);
+    expect(isInStock(p, "red", "M")).toBe(false);
+    expect(isInStock(p, "black", "XL")).toBe(false);
+  });
+
+  test("isSoldOut is true only when every pair is sold out, and when there are no sizes", () => {
+    expect(isSoldOut(p)).toBe(false);
+    expect(
+      isSoldOut({
+        ...p,
+        soldOut: [
+          { color: "black", size: "S" },
+          { color: "black", size: "M" },
+        ],
+      }),
+    ).toBe(true);
+    expect(isSoldOut({ ...p, sizes: [], soldOut: [] })).toBe(true);
+    expect(isSoldOut({ ...p, colors: [], soldOut: [] })).toBe(true);
+    // Another color still in stock keeps the product available.
+    expect(
+      isSoldOut({
+        ...p,
+        colors: [color("black"), color("cream")],
+        soldOut: [
+          { color: "black", size: "S" },
+          { color: "black", size: "M" },
+        ],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("cardPhoto", () => {
+  test("is the first photo of the first color, else null", () => {
+    const first = { key: "a.jpg", width: 800, height: 1000 };
+    expect(cardPhoto({ colors: [color("black", [first, { key: "b.jpg" }]), color("cream", [{ key: "c.jpg" }])] })).toEqual(first);
+    expect(cardPhoto({ colors: [color("black"), color("cream", [{ key: "c.jpg" }])] })).toBeNull();
+    expect(cardPhoto({ colors: [] })).toBeNull();
+  });
+});
+
+describe("nextSortOrder", () => {
+  test("is min - 1, and 0 for an empty catalog", () => {
+    expect(nextSortOrder([3, 5])).toBe(2);
+    expect(nextSortOrder([])).toBe(0);
+    expect(nextSortOrder([0, -4, 7])).toBe(-5);
+  });
+});
+
+describe("normalizeWhatsapp", () => {
+  test("strips +, spaces and dashes", () =>
+    expect(normalizeWhatsapp("+20 10 1234-5678")).toBe("201012345678"));
+  test("leaves letters for the schema to reject", () => expect(normalizeWhatsapp("abc")).toBe("abc"));
+  test("handles a local number with dashes", () =>
+    expect(normalizeWhatsapp("010-1234-5678")).toBe("01012345678"));
+});
+
+describe("nameIn", () => {
+  test("picks Arabic for ar", () => expect(nameIn({ nameAr: "أسود", nameEn: "Black" }, "ar")).toBe("أسود"));
+  test("picks English for en", () => expect(nameIn({ nameAr: "أسود", nameEn: "Black" }, "en")).toBe("Black"));
+});
+
+describe("railPhoto", () => {
+  const flat = { key: "flat" }, hanger = { key: "hanger" };
+  test("is the second photo when there are two", () => expect(railPhoto(color("c", [flat, hanger]))).toEqual(hanger));
+  test("is the first photo when there is one", () => expect(railPhoto(color("c", [flat]))).toEqual(flat));
+  test("is null with no photos", () => expect(railPhoto(color("c"))).toBeNull());
+});
+
+describe("railItems", () => {
+  test("skips photoless colors and keeps the owner's order", () => {
+    const items = railItems({ colors: [color("a"), color("b", [{ key: "b1" }]), color("c", [{ key: "c1" }, { key: "c2" }])] });
+    expect(items.map((i) => [i.color.key, i.photo.key])).toEqual([["b", "b1"], ["c", "c2"]]);
+  });
+  test("keeps every photographed color, more than four included", () => {
+    const keys = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const colors = keys.map((k) => color(k, [{ key: k }]));
+    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(keys);
+  });
+  test("keeps every photographed color after skipping photoless ones", () => {
+    const colors = [color("bare"), ...["a", "b", "c", "d", "e"].map((k) => color(k, [{ key: k }])), color("none")];
+    expect(railItems({ colors }).map((i) => i.color.key)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+});
+
+describe("hookOffset", () => {
+  test("is the measured hookTop for a square or unsized photo", () => {
+    expect(hookOffset({ key: "k", hookTop: 0.0525 })).toBe(0.0525);
+    expect(hookOffset({ key: "k", width: 1200, height: 1200, hookTop: 0.08 })).toBe(0.08);
+  });
+  test("scales by height / width, as a fraction of the box width", () => {
+    expect(hookOffset({ key: "k", width: 1200, height: 1500, hookTop: 0.1 })).toBeCloseTo(0.125);
+  });
+  test("falls back to DEFAULT_HOOK_TOP for a photo measured before hookTop existed", () => {
+    expect(DEFAULT_HOOK_TOP).toBe(0.1);
+    expect(hookOffset({ key: "k" })).toBe(DEFAULT_HOOK_TOP);
+    expect(hookOffset({ key: "k", width: 1000, height: 2000 })).toBeCloseTo(0.2);
+  });
+});
+
+describe("featuredProduct", () => {
+  test("is the first product with a rail item", () => {
+    const bare = product([color("a")]);
+    const shot = product([color("a", [{ key: "a1" }])]);
+    expect(featuredProduct([bare, shot])).toBe(shot);
+  });
+  test("is null when no product has a photo", () => expect(featuredProduct([product([color("a")])])).toBeNull());
+  test("is null for an empty catalog", () => expect(featuredProduct([])).toBeNull());
+});
+
+describe("colorByKey", () => {
+  const p = product([color("grey"), color("black")]);
+  test("finds a color", () => expect(colorByKey(p, "black")?.key).toBe("black"));
+  test("is null for an unknown key", () => expect(colorByKey(p, "pink")).toBeNull());
+});
+
+describe("initialColor", () => {
+  const p = product([color("grey"), color("black")]);
+  test("picks the named color", () => expect(initialColor(p, "black").key).toBe("black"));
+  test.each([undefined, "pink", ["black", "grey"]])("falls back to the first color for %j", (key) =>
+    expect(initialColor(p, key).key).toBe("grey"));
+});
+
+describe("sizeAvailability", () => {
+  const p = { sizes: ["S", "M", "L", "XL"], colors: [color("black")], soldOut: [{ color: "black", size: "S" }] };
+  test("lists every size in order with its stock", () =>
+    expect(sizeAvailability(p, "black")).toEqual([
+      { size: "S", inStock: false }, { size: "M", inStock: true }, { size: "L", inStock: true }, { size: "XL", inStock: true },
+    ]));
+  test("marks every size out for an unknown color", () =>
+    expect(sizeAvailability(p, "pink").every((s) => !s.inStock)).toBe(true));
+});
+
+describe("isColorSoldOut", () => {
+  const p = { sizes: ["S", "M"], colors: [color("black"), color("grey")], soldOut: [{ color: "black", size: "S" }, { color: "black", size: "M" }] };
+  test("true when every size of the color is sold out", () => expect(isColorSoldOut(p, "black")).toBe(true));
+  test("false when a size is in stock", () => expect(isColorSoldOut(p, "grey")).toBe(false));
+  test("true for an unknown color", () => expect(isColorSoldOut(p, "pink")).toBe(true));
+});
+
+describe("linkState", () => {
+  test("a published product is live", () => {
+    expect(linkState({ published: true, wasPublished: true })).toBe("live");
+  });
+
+  test("a hidden product that was published once is unavailable", () => {
+    expect(linkState({ published: false, wasPublished: true })).toBe("unavailable");
+  });
+
+  test("a never-published draft is missing, like an unknown slug", () => {
+    expect(linkState({ published: false, wasPublished: false })).toBe("missing");
+  });
+});
