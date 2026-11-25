@@ -115,7 +115,7 @@ missing one from the master. Customer pages render photos through
 variants) run only under `NEXTJS_ENV=development`; a deployed Worker answers
 503 instead.
 
-Workers Cache is on (`cache` in `wrangler.jsonc`; off on staging for now) and
+Workers Cache is on in every environment (`cache` in `wrangler.jsonc`) and
 sits in front of the whole Worker: a hit never runs it. Any new response that
 must not be cached has to carry `private` or `no-store` (Next pages already
 do). The Worker entry is `worker.ts`, which wraps OpenNext's and, through

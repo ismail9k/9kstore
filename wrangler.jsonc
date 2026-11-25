@@ -33,6 +33,8 @@
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "9k-store-photos" }],
   "images": { "binding": "IMAGES" },
   "cache": { "enabled": true },
+  // Workers Logs: request logs and each request's CPU time, for production.
+  "observability": { "enabled": true },
   "env": {
     // Deployed from `develop` by Workers Builds. Bindings are not inherited,
     // so every binding added above needs a staging copy here.
