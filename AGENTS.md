@@ -130,6 +130,16 @@ the catalog, a settings save every shared page. A new write that changes
 what customers see needs its purge too. The cache is per Worker version, so
 a deploy starts it empty.
 
+Analytics is PostHog, browser only: `src/instrumentation-client.ts` is the
+one file that imports `posthog-js`, starts it on every page except `/admin`,
+and hands the instance to `src/lib/analytics/instance.ts`. Components send
+custom events through `src/lib/analytics/events.ts`, which reaches PostHog
+only through that handle, so `posthog-js` stays out of the server bundle
+(client components are rendered in the Worker too). The settings live in
+`src/lib/analytics/config.ts`. The token and host are build-time
+`NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` (README,
+"First-time setup"); without them PostHog stays off.
+
 The brief's suggested target, which the config is set up for:
 
 - **Data is read at request time, not built in.** The owner's admin edits must
@@ -156,6 +166,14 @@ The brief's suggested target, which the config is set up for:
   tapped, and a sold-out size never opens WhatsApp. The button must work in
   Instagram's in-app browser: the tap is a plain link to the order route,
   never `window.open`.
+- **No PostHog in the Worker, and no proxy.** Never import `posthog-js`
+  (or `posthog-node`) outside `src/instrumentation-client.ts`, never send
+  events from server code, and never route them through the Worker (no
+  `/ingest` rewrite): most visits never reach the Worker, and every proxied
+  event would count against the free plan's daily requests. New events go in
+  `src/lib/analytics/events.ts` and carry nothing about the customer. An
+  event fired as the page leaves (like `order_tapped`) uses
+  `{ send_instantly: true, transport: "sendBeacon" }`.
 - **Arabic is first-class, not mirrored English.** Use RTL layout, keep prices,
   sizes and codes readable inside RTL text, use Western digits (0–9) in both
   languages, and give every customer-facing string an Arabic version.
