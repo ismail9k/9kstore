@@ -7,6 +7,7 @@ import { Photo } from "@/components/photo";
 import { Price } from "@/components/price";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { captureOrderTapped } from "@/lib/analytics/events";
 import {
   colorByKey,
   initialColor,
@@ -32,9 +33,10 @@ function replaceColor(key: string) {
 /**
  * The product page's interactive part: the gallery of the selected color,
  * the color and size pickers, and the order button, which is a plain link to
- * the order route once a size is chosen (no `target`, no `onClick`, so it
- * works in in-app browsers). Before hydration it renders the "choose a size"
- * state, which is right: nothing can be chosen yet.
+ * the order route once a size is chosen (no `target`, and nothing stops or
+ * replaces its navigation, so it works in in-app browsers; its `onClick` only
+ * records the tap for analytics). Before hydration it renders the "choose a
+ * size" state, which is right: nothing can be chosen yet.
  */
 export function ProductView({
   product,
@@ -207,7 +209,14 @@ export function ProductView({
           )}
           {orderHref !== null ? (
             <Button size="lg" asChild className="h-12 w-full px-8 text-base font-semibold md:w-auto md:self-start">
-              <a href={orderHref}>{t.product.orderOnWhatsapp}</a>
+              <a
+                href={orderHref}
+                onClick={() => {
+                  if (size !== null) captureOrderTapped({ slug: product.slug, size, priceEgp: product.priceEgp, locale });
+                }}
+              >
+                {t.product.orderOnWhatsapp}
+              </a>
             </Button>
           ) : (
             <>

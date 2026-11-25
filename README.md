@@ -86,7 +86,27 @@ D1. Do these steps in order:
    files. Link-preview tags and the WhatsApp message's link then use the
    domain. Until then, every absolute URL uses the origin the request came
    in on.
-6. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
+6. **Turn on PostHog** (analytics, error tracking, session replay). Set two
+   **build** variables on each Worker in the Cloudflare dashboard: Workers &
+   Pages → the Worker → Settings → Build → Variables and secrets.
+   ```
+   NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_…   # PostHog → Project settings → Project token
+   NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com   # or https://us.i.posthog.com: your project's region
+   ```
+   Set them on `9k-store` and on `9k-store-staging`. On `9k-store-staging`
+   set them for both production builds (`develop`) and preview builds (every
+   other branch), which Workers Builds keeps apart. `next build` inlines
+   `NEXT_PUBLIC_*` values into the browser code, so they must be **build**
+   variables: the Worker's runtime "Variables and secrets" or `vars` in
+   `wrangler.jsonc` never reach the build. A change applies from the next
+   build, so retry the latest build or push a commit. Without them PostHog
+   stays off, which is how local runs and CI work. To try it locally, put
+   both lines in `.env.local` (git-ignored).
+   In PostHog's project settings, turn on **Session replay**: the code
+   allows recording, but PostHog records only when the project allows it
+   too. Also turn on **Discard client IP data**. PostHog takes the IP from
+   the request, not from the event, so only that setting keeps it out.
+7. **Run it locally.** Copy `.dev.vars.example` to `.dev.vars` and fill in
    both secrets. The example values are deliberately too short and must be
    replaced (password at least 12 characters, secret at least 32), or the
    admin shows "not set up". Then:
@@ -193,3 +213,24 @@ deploys.
 
 Bindings are not inherited by `env.staging` or its `previews` block, so add
 each new binding to all three in `wrangler.jsonc`.
+
+## Analytics
+
+PostHog runs in the browser only, from `src/instrumentation-client.ts`
+(`posthog-js`). The Worker never runs PostHog code and does not proxy it:
+the catalog and product pages are served from Workers Cache, so the Worker
+doesn't run on most visits, and events go straight to PostHog's host so they
+don't count against the Worker's daily requests. What it sends:
+
+- a `$pageview` on every page load and client-side navigation, plus
+  autocapture, page leaves and session replay (inputs masked);
+- uncaught exceptions, for error tracking;
+- `order_tapped` when a customer taps "Order on WhatsApp", with
+  `product_slug`, `size`, `price` (EGP), `currency` and `language`. It goes
+  out as a beacon, so it arrives even though the tap leaves the page at
+  once.
+
+Nothing under `/admin` is tracked or recorded. Visitors stay anonymous: the
+store never identifies anyone, and ad click IDs (`fbclid`, `igshid`, `igsh`
+and others) are masked in recorded URLs. The settings are in
+`src/lib/analytics/config.ts`.
